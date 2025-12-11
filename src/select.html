@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Select Photos</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="selection-screen" style="background-image: url('../assets/payment_background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+  <div class="container">
+    <div class="payment-header">
+      <h1 class="title">Choose Your Photo Pack</h1>
+      <p class="subtitle">Pick the number of photos for your session</p>
+    </div>
+
+    <div class="option-grid" role="group" aria-label="Photo pack options">
+      <button class="option-card active" data-count="2" data-amount="200" aria-pressed="true">
+        <div class="option-top">
+          <span class="option-count">2 Photos</span>
+          <span class="option-badge">Popular</span>
+        </div>
+        <div class="option-price">₹200</div>
+        <div class="option-note">Great for quick memories</div>
+      </button>
+
+      <button class="option-card" data-count="4" data-amount="300" aria-pressed="false">
+        <div class="option-top">
+          <span class="option-count">4 Photos</span>
+        </div>
+        <div class="option-price">₹300</div>
+        <div class="option-note">More poses, more fun</div>
+      </button>
+    </div>
+
+    <div class="button-group">
+      <button id="continue-btn" class="btn btn-primary">Continue <span class="btn-arrow">→</span></button>
+    </div>
+  </div>
+
+  <script>
+    const optionCards = document.querySelectorAll('.option-card');
+    const continueBtn = document.getElementById('continue-btn');
+
+    function setActive(card) {
+      optionCards.forEach(c => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
+      card.classList.add('active');
+      card.setAttribute('aria-pressed', 'true');
+    }
+
+    optionCards.forEach(card => {
+      card.addEventListener('click', () => setActive(card));
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setActive(card);
+        }
+      });
+    });
+
+    continueBtn.addEventListener('click', () => {
+      const selected = document.querySelector('.option-card.active');
+      const count = selected?.dataset.count || '2';
+      const amount = selected?.dataset.amount || '200';
+
+      localStorage.setItem('orderCount', count);
+      localStorage.setItem('orderAmount', amount);
+
+      window.location.href = 'payment.html';
+    });
+  </script>
+</body>
+</html>

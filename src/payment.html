@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Payment</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Cashfree UI SDK for UPI components (use stable alias to avoid 404s) -->
+  <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+</head>
+<body class="payment-screen" style="background-image: url('../assets/payment_background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+  <div class="container">
+    <div class="payment-header" style="position:relative;">
+      <!-- Back arrow aligned to container's left with padding -->
+      <button id="back-btn" aria-label="Back" title="Back" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); background:transparent; border:none; padding:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+        <span style="display:inline-block; width:22px; height:22px; border-left:3px solid #fff; border-bottom:3px solid #fff; transform:rotate(45deg);"></span>
+      </button>
+      <!-- Centered title unaffected by arrow position -->
+      <h1 class="title" style="margin:0; text-align:center;">Scan & Pay</h1>
+      <p class="subtitle">Scan the QR code with any UPI app to complete payment</p>
+    </div>
+    
+    <div class="qr-container">
+      <div id="qr-code-wrapper" class="qr-code-wrapper">
+        <div class="loader">Generating QR Code...</div>
+      </div>
+      
+      <div class="payment-details">
+        <div class="amount-display">
+          <span class="currency">₹</span>
+          <span id="amount" class="amount">50</span>
+        </div>
+        <p class="payment-info">for 2 strips</p>
+      </div>
+    </div>
+    
+    <div class="supported-apps">
+      <p>Supported UPI Apps:</p>
+      <div class="app-logos">
+        <span>Google Pay</span>
+        <span>PhonePe</span>
+        <span>Paytm</span>
+        <span>BHIM</span>
+      </div>
+    </div>
+    
+    <div class="timer-container">
+      <p>QR Code expires in: <span id="timer" class="timer">5:00</span></p>
+    </div>
+    
+    <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
+    
+    <div id="status-message" class="status-message"></div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    let qrCodeId = null;
+    let paymentCheckInterval = null;
+    let config = null;
+    let expiryTime = null;
+    let timerInterval = null;
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      config = await window.electronAPI.getConfig();
+
+      // Back button to change selection
+      const backBtn = document.getElementById('back-btn');
+      if (backBtn) {
+        backBtn.addEventListener('click', () => {
+          cleanup();
+          window.location.href = 'select.html';
+        });
+      }
+
+      // Read selection from localStorage (fallback to config)
+      const selectedAmount = parseInt(localStorage.getItem('orderAmount') || '', 10);
+      const selectedCount = parseInt(localStorage.getItem('orderCount') || '', 10);
+      const amountInRupees = Number.isFinite(selectedAmount) ? selectedAmount : config.payment.amountInRupees;
+      const photoCount = Number.isFinite(selectedCount) ? selectedCount : 2;
+
+      // Display amount and description
+      document.getElementById('amount').textContent = amountInRupees;
+      const infoEl = document.querySelector('.payment-info');
+      if (infoEl) infoEl.textContent = `for ${photoCount} ${photoCount === 2 ? 'strips' : 'photos'}`;
+
+      // Generate QR code
+      await generateQRCode(amountInRupees, photoCount);
+      
+      // Start checking payment status
+      startPaymentCheck();
+      
+      // Start expiry timer
+      startExpiryTimer(config.payment.qrCodeExpiryMinutes * 60);
+      
+      // Cancel button
+      document.getElementById('cancel-btn').addEventListener('click', () => {
+        cleanup();
+        window.location.href = 'index.html';
+      });
+    });
+
+    async function generateQRCode(amountInRupees, photoCount) {
+      try {
+        const amount = amountInRupees * 100; // Convert to paise
+        const description = `Photobooth Session - ${photoCount} ${photoCount === 2 ? 'strips' : 'photos'}`;
+
+        // Create order via backend (returns order_id and payment_session_id)
+        const response = await window.electronAPI.createQRCode(amount, description);
+
+        if (response.success) {
+          const { id, order_id, payment_session_id, payment_link, image_url } = response.qrCode;
+          qrCodeId = order_id || id;
+
+          // Initialize Cashfree UI SDK
+          const cashfree = Cashfree({ mode: (window.location.hostname === 'localhost' ? 'sandbox' : 'production') });
+
+          // Clear any previous content and mount the UPI QR component
+          const mountEl = document.getElementById('qr-code-wrapper');
+          mountEl.innerHTML = '';
+
+          const upiQr = cashfree.create('upiQr', {
+            values: {
+              size: '280px',
+              // Pass payment session if SDK supports it; kept for forward compatibility
+              payment_session_id: payment_session_id
+            }
+          });
+
+          // Handle component load errors
+          upiQr.on('loaderror', function (data) {
+            console.error('Cashfree UPI QR load error:', data?.error);
+            // Fallbacks: try local QR render from payment_link, else static image
+            if (payment_link && window.QRCode) {
+              renderLocalQR(payment_link);
+            } else if (image_url) {
+              document.getElementById('qr-code-wrapper').innerHTML = `
+                <img src="${image_url}" alt="UPI QR Code" class="qr-image">
+              `;
+            } else {
+              showError('Failed to load UPI QR. Please try again.');
+            }
+          });
+
+          // Mount the component
+          upiQr.mount('#qr-code-wrapper');
+
+          // Ready event (optional debug)
+          upiQr.on('ready', function (d) {
+            // console.log('UPI QR ready:', d?.value || upiQr.data()?.value);
+          });
+        } else {
+          showError('Failed to create payment order. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error generating QR/component:', error);
+        showError('Error generating QR code: ' + error.message);
+      }
+    }
+
+    function startPaymentCheck() {
+      paymentCheckInterval = setInterval(async () => {
+        if (!qrCodeId) return;
+        
+        try {
+          const response = await window.electronAPI.checkPayment(qrCodeId);
+          
+          if (response.success && response.paid) {
+            cleanup();
+            window.location.href = 'success.html';
+          }
+        } catch (error) {
+          console.error('Error checking payment:', error);
+        }
+      }, 2000); // Check every 2 seconds
+    }
+
+    function startExpiryTimer(seconds) {
+      expiryTime = Date.now() + (seconds * 1000);
+      
+      timerInterval = setInterval(() => {
+        const remaining = Math.max(0, expiryTime - Date.now());
+        const minutes = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        
+        document.getElementById('timer').textContent = 
+          `${minutes}:${secs.toString().padStart(2, '0')}`;
+        
+        if (remaining <= 0) {
+          cleanup();
+          window.location.href = 'failure.html?reason=expired';
+        }
+      }, 1000);
+    }
+
+    function cleanup() {
+      if (paymentCheckInterval) clearInterval(paymentCheckInterval);
+      if (timerInterval) clearInterval(timerInterval);
+    }
+
+    function showError(message) {
+      const statusEl = document.getElementById('status-message');
+      statusEl.textContent = message;
+      statusEl.style.display = 'block';
+      statusEl.classList.add('error');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pixora Payments</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="welcome-screen" style="background-image: url('../assets/welcome_background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+
+  <script src="script.js"></script>
+  <script>
+    // Navigate to selection screen on any click
+    window.addEventListener('DOMContentLoaded', async () => {
+      document.body.addEventListener('click', () => {
+        window.location.href = 'select.html';
+      });
+    });
+  </script>
+</body>
+</html>
