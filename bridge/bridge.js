@@ -1,8 +1,10 @@
 const express = require('express');
 const { spawn } = require('child_process');
+const fs = require('fs');
 
 const DSLR_TITLE = 'DSLRBOOTH - START';
-const PIXORA_EXE = 'C:\\Program Files\\PixoraPayments\\PixoraPayments.exe';
+// Allow overriding path via environment: PIXORA_EXE
+const PIXORA_EXE = process.env.PIXORA_EXE || 'C:\\Program Files\\PixoraPayments\\PixoraPayments.exe';
 
 const app = express();
 let lastLaunchAt = 0;
@@ -31,8 +33,17 @@ if ($h -ne [IntPtr]::Zero) { [WinAPI]::ShowWindow($h,6) } # 6 = Minimize
 
 function launchPixora() {
   try {
-    spawn(PIXORA_EXE, [], { detached: true, stdio: 'ignore' }).unref();
-    console.log('Launched PixoraPayments.');
+    if (!fs.existsSync(PIXORA_EXE)) {
+      console.error('PixoraPayments executable not found at:', PIXORA_EXE);
+      console.error('Set environment variable PIXORA_EXE to the correct path.');
+      return;
+    }
+    // Use cmd to handle paths with spaces reliably
+    const cmd = 'cmd.exe';
+    const args = ['/c', 'start', '""', `"${PIXORA_EXE}"`];
+    const child = spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true });
+    child.unref();
+    console.log('Launched PixoraPayments at:', PIXORA_EXE);
   } catch (e) {
     console.error('Failed to launch PixoraPayments:', e);
   }
@@ -51,7 +62,7 @@ app.get('/', (req, res) => {
       minimizeDSLRBooth();
       launchPixora();
     } else {
-      console.log('Debounced duplicate session_start(PrintAndGIF).');
+      console.log('Debounced duplicate processing_start event.');
     }
   }
 

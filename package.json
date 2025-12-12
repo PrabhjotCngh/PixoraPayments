@@ -20,7 +20,7 @@
   "license": "MIT",
   "build": {
     "appId": "com.pixora.photorooms",
-    "productName": "Pixora Photorooms",
+    "productName": "PixoraPayments",
     "files": [
       "main.js",
       "preload.js",
