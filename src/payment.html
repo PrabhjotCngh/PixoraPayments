@@ -93,10 +93,10 @@
       // Start expiry timer
       startExpiryTimer(config.payment.qrCodeExpiryMinutes * 60);
       
-      // Cancel button
-      document.getElementById('cancel-btn').addEventListener('click', () => {
+      // Cancel button -> launch DSLR and exit
+      document.getElementById('cancel-btn').addEventListener('click', async () => {
         cleanup();
-        window.location.href = 'index.html';
+        await window.electronAPI.launchPhotobooth();
       });
     });
 
@@ -167,7 +167,8 @@
           
           if (response.success && response.paid) {
             cleanup();
-            window.location.href = 'success.html';
+            // Payment success -> launch DSLR and exit
+            await window.electronAPI.launchPhotobooth();
           }
         } catch (error) {
           console.error('Error checking payment:', error);
@@ -188,7 +189,8 @@
         
         if (remaining <= 0) {
           cleanup();
-          window.location.href = 'success.html';
+          // Expired -> launch DSLR and exit
+          window.electronAPI.launchPhotobooth();
         }
       }, 1000);
     }

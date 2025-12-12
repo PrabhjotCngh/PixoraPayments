@@ -24,4 +24,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return fetch(`http://localhost:3000/api/check-payment/${qrCodeId}`)
       .then(res => res.json());
   }
+  
 });

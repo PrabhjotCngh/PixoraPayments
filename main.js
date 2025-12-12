@@ -22,8 +22,8 @@ function createWindow() {
     icon: path.join(__dirname, 'assets', 'icon.ico')
   });
 
-  // Load welcome screen
-  mainWindow.loadFile('src/index.html');
+  // Start directly at selection screen
+  mainWindow.loadFile('src/select.html');
 
   // Show menu bar for testing
   mainWindow.setMenuBarVisibility(true);

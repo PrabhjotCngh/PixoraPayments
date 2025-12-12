@@ -56,12 +56,12 @@
       // Button handlers
       document.getElementById('retry-btn').addEventListener('click', () => {
         clearTimeout(autoRedirectTimer);
-        window.location.href = 'payment.html';
+        window.location.href = 'select.html';
       });
       
-      document.getElementById('cancel-btn').addEventListener('click', () => {
+      document.getElementById('cancel-btn').addEventListener('click', async () => {
         clearTimeout(autoRedirectTimer);
-        window.location.href = 'index.html';
+        await window.electronAPI.launchPhotobooth();
       });
     });
 
@@ -81,7 +81,7 @@
         
         if (countdown <= 0) {
           clearInterval(interval);
-          window.location.href = 'index.html';
+          window.electronAPI.launchPhotobooth();
         }
       }, 1000);
     }
