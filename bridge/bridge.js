@@ -3,8 +3,31 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 
 const DSLR_TITLE = 'DSLRBOOTH - START';
+const PIXORA_EXE = process.env.PIXORA_EXE || 'C:\\Users\\sw\\AppData\\Local\\Programs\\PixoraPayments\\PixoraPayments.exe';
+
+// diagnostic (add near top)
+console.log('process.env.PIXORA_EXE raw value:', process.env.PIXORA_EXE);
+console.log('process.env.PIXORA_EXE (JSON):', JSON.stringify(process.env.PIXORA_EXE));
+
 // Allow overriding path via environment: PIXORA_EXE
-const PIXORA_EXE = process.env.PIXORA_EXE || 'C:\\Program Files\\PixoraPayments\\PixoraPayments.exe';
+
+const path = require('path');
+const defaultExe = 'C:\\Users\\sw\\AppData\\Local\\Programs\\PixoraPayments\\PixoraPayments.exe';
+
+// raw env or default
+const raw = process.env.PIXORA_EXE || defaultExe;
+
+// strip surrounding quotes, trim, normalize to platform format
+let exePath = String(raw).replace(/^\s*"(.*)"\s*$/, '$1').replace(/^\s*'(.*)'\s*$/, '$1').trim();
+exePath = path.normalize(exePath);
+
+// console + file debug (guarantees we can inspect when console is invisible)
+console.log('process.env.PIXORA_EXE (JSON):', JSON.stringify(process.env.PIXORA_EXE));
+console.log('raw value used:', raw);
+console.log('normalized exePath:', exePath);
+try {
+  fs.appendFileSync('bridge-debug.log', `${new Date().toISOString()} raw:${JSON.stringify(process.env.PIXORA_EXE)} rawUsed:${raw} exePath:${exePath}\n`);
+} catch (err) {}
 
 const app = express();
 let lastLaunchAt = 0;
@@ -31,19 +54,47 @@ if ($h -ne [IntPtr]::Zero) { [WinAPI]::ShowWindow($h,6) } # 6 = Minimize
   ps.on('error', (e) => console.error('Minimize PS error:', e));
 }
 
+const { execFile } = require('child_process');
+
 function launchPixora() {
   try {
-    if (!fs.existsSync(PIXORA_EXE)) {
-      console.error('PixoraPayments executable not found at:', PIXORA_EXE);
-      console.error('Set environment variable PIXORA_EXE to the correct path.');
+    if (!fs.existsSync(exePath)) {
+      console.error('PixoraPayments executable not found at:', exePath);
       return;
     }
-    // Use cmd to handle paths with spaces reliably
-    const cmd = 'cmd.exe';
-    const args = ['/c', 'start', '""', `"${PIXORA_EXE}"`];
-    const child = spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true });
-    child.unref();
-    console.log('Launched PixoraPayments at:', PIXORA_EXE);
+
+    // 1) Try execFile (direct, shows GUI normally)
+    try {
+      const child = execFile(exePath, { windowsHide: false }, (err) => {
+        if (err) console.warn('execFile error:', err);
+      });
+      console.log('Launched (execFile) at:', exePath, 'pid:', child.pid);
+      return;
+    } catch (e) {
+      console.warn('execFile throw, falling back:', e);
+    }
+
+    // 2) Try spawn with shell (uses cmd / powershell to start)
+    try {
+      const child = spawn(exePath, [], { shell: true, detached: false, stdio: 'inherit', windowsHide: false });
+      child.on('error', (err) => console.warn('spawn(shell) error:', err));
+      child.on('exit', (code, sig) => console.log('spawn(shell) exit', code, sig));
+      console.log('Launched (spawn shell) at:', exePath, 'pid:', child.pid);
+      return;
+    } catch (e) {
+      console.warn('spawn(shell) throw, falling back:', e);
+    }
+
+    // 3) Fallback: PowerShell Start-Process (matches manual Start-Process)
+    try {
+      const ps = spawn('powershell.exe', ['-NoProfile', '-Command', 'Start-Process', '-FilePath', `"${exePath}"`], { windowsHide: false });
+      ps.on('error', (err) => console.warn('PowerShell Start-Process error:', err));
+      ps.on('exit', (code) => console.log('PowerShell Start-Process exit', code));
+      console.log('Tried Start-Process for:', exePath);
+      return;
+    } catch (e) {
+      console.warn('PowerShell fallback throw:', e);
+    }
   } catch (e) {
     console.error('Failed to launch PixoraPayments:', e);
   }
