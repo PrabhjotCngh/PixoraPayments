@@ -6,6 +6,8 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "dist": "electron-builder",
     "dev": "concurrently \"node server.js\" \"electron .\""
   },
   "keywords": [
@@ -19,6 +21,21 @@
   "build": {
     "appId": "com.pixora.photorooms",
     "productName": "Pixora Photorooms",
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "config.json",
+      "assets/**",
+      "src/**",
+      "package.json"
+    ],
+    "extraResources": [
+      "assets/**"
+    ],
+    "directories": {
+      "buildResources": "assets/build"
+    },
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"
@@ -32,10 +49,10 @@
     "axios": "^1.13.2",
     "cashfree-pg": "^5.1.0",
     "dotenv": "^17.2.3",
-    "electron": "^39.2.6",
     "express": "^5.2.1"
   },
   "devDependencies": {
+    "electron": "^39.2.6",
     "electron-builder": "^26.0.12"
   }
 }
