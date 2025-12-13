@@ -24,4 +24,17 @@
     "background": "./assets/background.png",
     "icon": "./assets/icon.ico"
   }
+
+  ,
+  "window": {
+    "width": 1200,
+    "height": 800,
+    "fullscreen": false,
+    "kiosk": false,
+    "alwaysOnTop": false,
+    "skipTaskbar": false,
+    "bringToFrontOnLaunch": true,
+    "resizable": true,
+    "autoHideMenuBar": false
+  }
 }

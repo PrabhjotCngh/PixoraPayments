@@ -32,6 +32,12 @@
   </div>
 
   <script>
+    window.addEventListener('error', (e) => {
+      console.error('Uncaught error in failure.html:', e);
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('Unhandled rejection in failure.html:', e);
+    });
     let countdown = 5;
     let autoRedirectTimer = null;
     
@@ -61,7 +67,14 @@
       
       document.getElementById('cancel-btn').addEventListener('click', async () => {
         clearTimeout(autoRedirectTimer);
-        await window.electronAPI.launchPhotobooth();
+        console.log('Cancel clicked: attempting restoreOrLaunchPhotobooth...');
+        try {
+          const result = await window.electronAPI.restoreOrLaunchPhotobooth();
+          console.log('restoreOrLaunchPhotobooth result (cancel):', result);
+          if (!result.success) alert('Failed to restore/launch photobooth: ' + result.error);
+        } catch (e) {
+          console.error('Error calling restoreOrLaunchPhotobooth (cancel):', e);
+        }
       });
     });
 
@@ -75,13 +88,20 @@
         progressBar.style.width = '0%';
       }, 50);
       
-      const interval = setInterval(() => {
+      const interval = setInterval(async () => {
         countdown--;
         document.getElementById('countdown').textContent = countdown;
         
         if (countdown <= 0) {
           clearInterval(interval);
-          window.electronAPI.launchPhotobooth();
+          console.log('Auto-redirect: attempting restoreOrLaunchPhotobooth...');
+          try {
+            const result = await window.electronAPI.restoreOrLaunchPhotobooth();
+            console.log('restoreOrLaunchPhotobooth result (auto):', result);
+            if (!result.success) alert('Failed to restore/launch photobooth: ' + result.error);
+          } catch (e) {
+            console.error('Error calling restoreOrLaunchPhotobooth (auto):', e);
+          }
         }
       }, 1000);
     }

@@ -16,6 +16,10 @@
         window.location.href = 'select.html';
       });
     });
+    // Allow exit from kiosk using Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && window.electronAPI && window.electronAPI.exitKiosk) window.electronAPI.exitKiosk();
+    });
   </script>
 </body>
 </html>

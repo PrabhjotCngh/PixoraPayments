@@ -67,6 +67,15 @@
 
       window.location.href = 'payment.html';
     });
+
+    // Allow pressing Escape to exit kiosk/always-on-top if needed
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (window.electronAPI && window.electronAPI.exitKiosk) {
+          window.electronAPI.exitKiosk();
+        }
+      }
+    });
   </script>
 </body>
 </html>
