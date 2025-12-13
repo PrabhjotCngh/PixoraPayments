@@ -167,8 +167,8 @@
           
           if (response.success && response.paid) {
             cleanup();
-            // Payment success -> launch DSLR and exit
-            await window.electronAPI.launchPhotobooth();
+            // Payment success -> show success screen
+            window.location.href = 'success.html';
           }
         } catch (error) {
           console.error('Error checking payment:', error);
@@ -189,8 +189,8 @@
         
         if (remaining <= 0) {
           cleanup();
-          // Expired -> launch DSLR and exit
-          window.electronAPI.launchPhotobooth();
+          // Expired -> show failure screen
+          window.location.href = 'failure.html';
         }
       }, 1000);
     }

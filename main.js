@@ -9,11 +9,13 @@ let serverProcess;
 // Create the main application window
 function createWindow() {
   mainWindow = new BrowserWindow({
+    // Production window settings
     width: 1200,
     height: 800,
-    fullscreen: false,  // Windowed mode for testing
-    frame: true,        // Show window controls for testing
-    resizable: true,
+    fullscreen: true,
+    frame: false,
+    resizable: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -22,14 +24,11 @@ function createWindow() {
     icon: path.join(__dirname, 'assets', 'icon.ico')
   });
 
-  // Load welcome screen first
-  mainWindow.loadFile('src/index.html');
+  // Load selection screen first
+  mainWindow.loadFile('src/select.html');
 
-  // Show menu bar for testing
-  mainWindow.setMenuBarVisibility(true);
-
-  // Development: Open DevTools (remove in production)
-  mainWindow.webContents.openDevTools();
+  // Production: hide menu bar and do not open DevTools
+  mainWindow.setMenuBarVisibility(false);
 }
 
 // Start Express server for webhooks
