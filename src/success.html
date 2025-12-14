@@ -24,12 +24,6 @@
   </div>
 
   <script>
-    window.addEventListener('error', (e) => {
-      console.error('Uncaught error in success.html:', e);
-    });
-    window.addEventListener('unhandledrejection', (e) => {
-      console.error('Unhandled rejection in success.html:', e);
-    });
     let countdown = 3;
     
     window.addEventListener('DOMContentLoaded', async () => {
@@ -45,25 +39,19 @@
         
         if (countdown <= 0) {
           clearInterval(interval);
-          launchOrRestorePhotobooth();
+          launchPhotobooth();
         }
       }, 1000);
     });
 
-    async function launchOrRestorePhotobooth() {
+    async function launchPhotobooth() {
+      const result = await window.electronAPI.launchPhotobooth();
+      
+      if (!result.success) {
+        alert('Failed to launch photobooth: ' + result.error);
+        window.location.href = 'index.html';
+      }
       // App will close automatically after launching photobooth
-        console.log('Attempting restoreOrLaunchPhotobooth...');
-        try {
-          const result = await window.electronAPI.restoreOrLaunchPhotobooth();
-          console.log('restoreOrLaunchPhotobooth result:', result);
-          if (!result.success) {
-            alert('Failed to launch photobooth: ' + result.error);
-            window.location.href = 'index.html';
-          }
-        } catch (e) {
-          console.error('Error calling restoreOrLaunchPhotobooth:', e);
-          window.location.href = 'index.html';
-        }
     }
   </script>
 </body>

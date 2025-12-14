@@ -10,15 +10,9 @@
 
   <script src="script.js"></script>
   <script>
-    // Navigate to selection screen on any click
-    window.addEventListener('DOMContentLoaded', async () => {
-      document.body.addEventListener('click', () => {
-        window.location.href = 'select.html';
-      });
-    });
-    // Allow exit from kiosk using Escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && window.electronAPI && window.electronAPI.exitKiosk) window.electronAPI.exitKiosk();
+    // Auto-redirect to selection screen immediately
+    window.addEventListener('DOMContentLoaded', () => {
+      window.location.replace('select.html');
     });
   </script>
 </body>

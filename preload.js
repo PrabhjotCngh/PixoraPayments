@@ -3,16 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose safe APIs to the renderer process
 contextBridge.exposeInMainWorld('electronAPI', {
   // Launch photobooth app
-  launchPhotobooth: () => {
-    console.log('preload: launchPhotobooth invoked');
-    return ipcRenderer.invoke('launch-photobooth');
-  },
-  
-  // Restore or launch photobooth (tries to restore minimized window by title if running)
-  restoreOrLaunchPhotobooth: () => {
-    console.log('preload: restoreOrLaunchPhotobooth invoked');
-    return ipcRenderer.invoke('restore-or-launch-photobooth');
-  },
+  launchPhotobooth: () => ipcRenderer.invoke('launch-photobooth'),
   
   // Get configuration
   getConfig: () => ipcRenderer.invoke('get-config'),
@@ -33,9 +24,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return fetch(`http://localhost:3000/api/check-payment/${qrCodeId}`)
       .then(res => res.json());
   }
-  ,
-  exitKiosk: () => ipcRenderer.invoke('exit-kiosk')
-  ,
-  bringToFront: () => ipcRenderer.invoke('bring-to-front')
   
 });

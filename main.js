@@ -27,9 +27,9 @@ function createWindow() {
     height: winCfg.height || 800,
     fullscreen: !!winCfg.fullscreen,
     kiosk: !!winCfg.kiosk,
-    frame: true,
+    frame: !!winCfg.frame,
     alwaysOnTop: !!winCfg.alwaysOnTop,
-    resizable: (typeof winCfg.resizable === 'boolean') ? winCfg.resizable : true,
+    resizable: !!winCfg.resizable,
     autoHideMenuBar: !!winCfg.autoHideMenuBar,
     skipTaskbar: !!winCfg.skipTaskbar,
     webPreferences: {
@@ -114,8 +114,24 @@ function startWebhookServer() {
 ipcMain.handle('launch-photobooth', async () => {
   const photoboothPath = process.env.PHOTOBOOTH_APP_PATH;
   
+  // Only support launching on Windows; safely no-op elsewhere
+  if (process.platform !== 'win32') {
+    return { success: false, error: 'Photobooth launch is only supported on Windows' };
+  }
+
   if (!photoboothPath) {
     return { success: false, error: 'Photobooth app path not configured' };
+  }
+
+  // Validate path exists before attempting spawn
+  try {
+    const fs = require('fs');
+    if (!fs.existsSync(photoboothPath)) {
+      return { success: false, error: `Photobooth executable not found at path: ${photoboothPath}` };
+    }
+  } catch (e) {
+    // If FS check fails, proceed but capture diagnostic
+    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} FS existsSync check failed: ${e}\n`); } catch (ee) {}
   }
 
   try {

@@ -32,12 +32,6 @@
   </div>
 
   <script>
-    window.addEventListener('error', (e) => {
-      console.error('Uncaught error in failure.html:', e);
-    });
-    window.addEventListener('unhandledrejection', (e) => {
-      console.error('Unhandled rejection in failure.html:', e);
-    });
     let countdown = 5;
     let autoRedirectTimer = null;
     
@@ -67,13 +61,10 @@
       
       document.getElementById('cancel-btn').addEventListener('click', async () => {
         clearTimeout(autoRedirectTimer);
-        console.log('Cancel clicked: attempting restoreOrLaunchPhotobooth...');
         try {
-          const result = await window.electronAPI.restoreOrLaunchPhotobooth();
-          console.log('restoreOrLaunchPhotobooth result (cancel):', result);
-          if (!result.success) alert('Failed to restore/launch photobooth: ' + result.error);
+          await window.electronAPI.launchPhotobooth();
         } catch (e) {
-          console.error('Error calling restoreOrLaunchPhotobooth (cancel):', e);
+          window.location.href = 'select.html';
         }
       });
     });
@@ -88,20 +79,14 @@
         progressBar.style.width = '0%';
       }, 50);
       
-      const interval = setInterval(async () => {
+      const interval = setInterval(() => {
         countdown--;
         document.getElementById('countdown').textContent = countdown;
         
         if (countdown <= 0) {
           clearInterval(interval);
-          console.log('Auto-redirect: attempting restoreOrLaunchPhotobooth...');
-          try {
-            const result = await window.electronAPI.restoreOrLaunchPhotobooth();
-            console.log('restoreOrLaunchPhotobooth result (auto):', result);
-            if (!result.success) alert('Failed to restore/launch photobooth: ' + result.error);
-          } catch (e) {
-            console.error('Error calling restoreOrLaunchPhotobooth (auto):', e);
-          }
+          window.electronAPI.launchPhotobooth()
+            .catch(() => { window.location.href = 'select.html'; });
         }
       }, 1000);
     }

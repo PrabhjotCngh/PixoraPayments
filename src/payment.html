@@ -48,8 +48,6 @@
       <p>QR Code expires in: <span id="timer" class="timer">5:00</span></p>
     </div>
     
-    <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
-    
     <div id="status-message" class="status-message"></div>
   </div>
 
@@ -93,11 +91,7 @@
       // Start expiry timer
       startExpiryTimer(config.payment.qrCodeExpiryMinutes * 60);
       
-      // Cancel button -> launch DSLR and exit
-      document.getElementById('cancel-btn').addEventListener('click', async () => {
-        cleanup();
-        await window.electronAPI.launchPhotobooth();
-      });
+      // Cancel button removed
     });
 
     async function generateQRCode(amountInRupees, photoCount) {
@@ -190,7 +184,7 @@
         if (remaining <= 0) {
           cleanup();
           // Expired -> show failure screen
-          window.location.href = 'failure.html';
+          window.location.href = 'failure.html?reason=expired';
         }
       }, 1000);
     }

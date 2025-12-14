@@ -52,55 +52,8 @@ Electron app that collects payment (via Cashfree QR) before starting a DSLR phot
       - `CASHFREE_API_VERSION`: e.g., `2025-01-01`
       - `WEBHOOK_PORT`: local server port (default `3000`)
       - `PHOTOBOOTH_APP_PATH`: full path to your DSLRBooth executable for relaunch after payment
-      - `PHOTOBOOTH_WINDOW_TITLE`: Optional exact window title for the DSLR Booth window used to restore the running app instead of spawning a new instance (helps when the booth is already running in kiosk/fullscreen)
 - Start the app:
    - `npm start`
-
-## Allow switching apps / disable kiosk
-
-- **Default behavior**: PixoraPayments used to run in kiosk/always-on-top mode to prevent user navigation away from the kiosk. You can disable that if you need to access other apps while Pixora is running.
-- **How to disable**: Open `config.json` and set `window.kiosk` and `window.alwaysOnTop` to `false` (they are `false` by default). If you need Pixora to appear on the taskbar so it's easier to switch to, set `window.skipTaskbar` to `false`.
-
-You can also override these at launch time using environment variables (useful when launching from other automation):
-
-```
-PIXORA_KIOSK=false
-PIXORA_ALWAYS_ON_TOP=false
-PIXORA_SKIPTASKBAR=false
-```
-
-Example `config.json` snippet:
-
-```
-   "window": {
-      "width": 1200,
-      "height": 800,
-      "fullscreen": false,
-      "kiosk": false,
-      "alwaysOnTop": false,
-      "skipTaskbar": false
-   }
-```
-
-You can also press the `Esc` key while the selection screen is visible to exit kiosk/always-on-top at runtime (this calls a safe IPC that clears those flags and returns the window to normal behavior).
-
-Bring to Foreground
-- **Default**: PixoraPayments will attempt to bring itself to the front when launched. To disable, set `window.bringToFrontOnLaunch` to `false` in `config.json`.
-- **Manual**: The renderer exposes `electronAPI.bringToFront()` to force the app to the front on demand.
-
-Bridge and Focus
-- If you start PixoraPayments using the `bridge/bridge.js` process, ensure `PIXORA_EXE` and `PIXORA_WINDOW_TITLE` are set so the bridge can focus the window. Bridge will attempt to minimize the DSLR app and then launch Pixora; it will also run a small PowerShell script to move the Pixora window to the foreground.
-
-Examples (bridge environment):
-```
-PIXORA_EXE=C:\path\to\PixoraPayments.exe
-PIXORA_WINDOW_TITLE=Pixora Payments
-PHOTOBOOTH_WINDOW_TITLE=dslrbooth - Choose an effect
-```
-
-CLI option: Bring to front
-- You can also tell PixoraPayments to attempt to bring itself to the front at launch using `--bring-to-front`.
-- The `bridge` will pass `--bring-to-front` automatically when launching Pixora.
 
 ## Screens Overview
 
@@ -151,9 +104,6 @@ CLI option: Bring to front
 - Recommended: Use DSLRBooth Triggers → URL to call a local bridge that launches PixoraPayments only on the events you care about.
 - Example bridge: see `bridge/bridge.js` (Node/Express) to launch PixoraPayments on `session_start` (optionally filtered by booth mode) and minimize DSLRBooth.
 - Logging: use `bridge/bridge-logger.js` to capture all trigger events (like RequestCatcher) while you tune the integration.
-- Debug logs: Pixora writes runtime debug to `debug.log` in the app root; the bridge writes `bridge-debug.log`. When things do not appear or disappear, inspect these files for timestamped events from the PowerShell scripts and launch attempts.
-   - Look for markers: `MINIMIZED`, `SET_Z_ORDER_BOTTOM`, `HIDDEN`, `WINDOW_NOT_FOUND`, `RESTORED`, `LAUNCHED` in `bridge-debug.log`.
-   - Check `debug.log` for `mainWindow.show`, `mainWindow.hide`, `mainWindow.focus`, `mainWindow.blur`, and the `restore-or-launch` handler results.
 
 ## Packaging (Windows)
 
