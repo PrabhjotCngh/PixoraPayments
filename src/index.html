@@ -6,13 +6,53 @@
   <title>Pixora Payments</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="welcome-screen" style="background-image: url('../assets/welcome_background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+<body class="welcome-screen">
+  <!-- Fullscreen looping background video -->
+  <video id="bg-video" class="video-bg" autoplay loop playsinline></video>
 
   <script src="script.js"></script>
   <script>
-    // Auto-redirect to selection screen immediately
-    window.addEventListener('DOMContentLoaded', () => {
-      window.location.replace('select.html');
+    // On tap/click, open payment page
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Load video source from config if available, else default path
+      try {
+        const cfg = await (window.electronAPI?.getConfig?.() || Promise.resolve(null));
+        const videoEl = document.getElementById('bg-video');
+        if (videoEl) {
+            // Hide until playable; no poster fallback
+            videoEl.style.display = 'none';
+            // Ensure autoplay with sound
+            videoEl.muted = false; videoEl.volume = 1.0; videoEl.playsInline = true; videoEl.autoplay = true;
+
+            // Load video source from config if available, else default path
+            let src = '../assets/welcome.mp4';
+            try {
+              const cfg = await (window.electronAPI?.getConfig?.() || Promise.resolve(null));
+              if (cfg && cfg.assets && cfg.assets.welcomeVideo) {
+                src = cfg.assets.welcomeVideo;
+              }
+            } catch (_) {}
+
+            // Normalize relative path from /src/ to /assets/
+            if (src.startsWith('./assets/')) src = src.replace('./assets/', '../assets/');
+            videoEl.src = src;
+
+            videoEl.addEventListener('canplay', () => {
+              videoEl.style.display = 'block';
+              try { const p = videoEl.play(); if (p && typeof p.then === 'function') p.catch(() => {}); } catch (_) {}
+            }, { once: true });
+            videoEl.addEventListener('error', () => {
+              // Keep poster/background if video fails
+              videoEl.style.display = 'none';
+            }, { once: true });
+          }
+      } catch (e) {
+        const videoEl = document.getElementById('bg-video');
+        if (videoEl) videoEl.src = '../assets/welcome_screen_saver.mp4';
+      }
+      document.body.addEventListener('click', () => {
+        window.location.href = 'payment.html';
+      }, { once: true });
     });
   </script>
 </body>

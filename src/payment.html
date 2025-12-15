@@ -19,10 +19,13 @@
       <h1 class="title" style="margin:0; text-align:center;">Scan & Pay</h1>
       <p class="subtitle">Scan the QR code with any UPI app to complete payment</p>
     </div>
+    <div id="highlight-message" class="highlight-message" style="display:none;"></div>
     
     <div class="qr-container">
-      <div id="qr-code-wrapper" class="qr-code-wrapper">
-        <div class="loader">Generating QR Code...</div>
+      <div id="qr-code-wrapper" class="qr-code-wrapper loading">
+        <div class="loader-overlay" aria-hidden="true"></div>
+        <div class="loader" aria-label="Loading"></div>
+        <div id="upi-qr"></div>
       </div>
       
       <div class="payment-details">
@@ -30,24 +33,18 @@
           <span class="currency">₹</span>
           <span id="amount" class="amount">50</span>
         </div>
-        <p class="payment-info">for 2 strips</p>
+        <p class="payment-info">for 2 strip copies</p>
       </div>
     </div>
     
-    <div class="supported-apps">
-      <p>Supported UPI Apps:</p>
-      <div class="app-logos">
-        <span>Google Pay</span>
-        <span>PhonePe</span>
-        <span>Paytm</span>
-        <span>BHIM</span>
-      </div>
-    </div>
+    
     
     <div class="timer-container">
       <p>QR Code expires in: <span id="timer" class="timer">5:00</span></p>
     </div>
     
+    <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
+
     <div id="status-message" class="status-message"></div>
   </div>
 
@@ -67,7 +64,7 @@
       if (backBtn) {
         backBtn.addEventListener('click', () => {
           cleanup();
-          window.location.href = 'select.html';
+          window.location.href = 'index.html';
         });
       }
 
@@ -80,24 +77,62 @@
       // Display amount and description
       document.getElementById('amount').textContent = amountInRupees;
       const infoEl = document.querySelector('.payment-info');
-      if (infoEl) infoEl.textContent = `for ${photoCount} ${photoCount === 2 ? 'strips' : 'photos'}`;
+      if (infoEl) infoEl.textContent = `for ${photoCount} ${photoCount === 2 ? 'strip copies' : 'photos'}`;
 
-      // Generate QR code
-      await generateQRCode(amountInRupees, photoCount);
+      // Static QR mode toggle
+      const useGateway = !(config && config.payment && config.payment.usePaymentGateway === false);
+
+      if (useGateway) {
+        // Generate dynamic QR via Cashfree and start polling
+        await generateQRCode(amountInRupees, photoCount);
+        startPaymentCheck();
+        startExpiryTimer(config.payment.qrCodeExpiryMinutes * 60);
+      } else {
+        // Render static QR image and enable tap-to-continue
+        const wrapperEl = document.getElementById('qr-code-wrapper');
+        const qrMountEl = document.getElementById('upi-qr');
+        if (qrMountEl) qrMountEl.innerHTML = '';
+        const staticPath = (config.assets && config.assets.staticQrImage) || '../assets/static_qr.png';
+        const img = document.createElement('img');
+        img.src = staticPath;
+        img.alt = 'Static UPI QR';
+        img.className = 'qr-image';
+        img.onload = () => { if (wrapperEl) wrapperEl.classList.remove('loading'); };
+        img.onerror = () => { if (wrapperEl) wrapperEl.classList.remove('loading'); };
+        qrMountEl.appendChild(img);
+
+        const msg = document.getElementById('highlight-message');
+        if (msg) {
+          msg.textContent = 'Once payment is done, tap anywhere to continue';
+          msg.style.display = 'block';
+        }
+
+        let tapped = false;
+        const tapHandler = async () => {
+          if (tapped) return;
+          tapped = true;
+          try { await window.electronAPI.launchPhotobooth(); } catch (e) { /* noop */ }
+        };
+        document.body.addEventListener('click', tapHandler);
+        document.body.addEventListener('touchstart', tapHandler);
+
+        startExpiryTimer(config.payment.qrCodeExpiryMinutes * 60);
+      }
       
-      // Start checking payment status
-      startPaymentCheck();
-      
-      // Start expiry timer
-      startExpiryTimer(config.payment.qrCodeExpiryMinutes * 60);
-      
-      // Cancel button removed
+      // Cancel button -> go back to index
+      const cancelBtn = document.getElementById('cancel-btn');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+          cleanup();
+          window.location.href = 'index.html';
+        });
+      }
     });
 
     async function generateQRCode(amountInRupees, photoCount) {
       try {
         const amount = amountInRupees * 100; // Convert to paise
-        const description = `Photobooth Session - ${photoCount} ${photoCount === 2 ? 'strips' : 'photos'}`;
+        const description = `Photobooth Session - ${photoCount} ${photoCount === 2 ? 'strip copies' : 'photos'}`;
 
         // Create order via backend (returns order_id and payment_session_id)
         const response = await window.electronAPI.createQRCode(amount, description);
@@ -109,9 +144,10 @@
           // Initialize Cashfree UI SDK
           const cashfree = Cashfree({ mode: (window.location.hostname === 'localhost' ? 'sandbox' : 'production') });
 
-          // Clear any previous content and mount the UPI QR component
-          const mountEl = document.getElementById('qr-code-wrapper');
-          mountEl.innerHTML = '';
+          // Mount the UPI QR component into the dedicated container
+          const wrapperEl = document.getElementById('qr-code-wrapper');
+          const qrMountEl = document.getElementById('upi-qr');
+          if (qrMountEl) qrMountEl.innerHTML = '';
 
           const upiQr = cashfree.create('upiQr', {
             values: {
@@ -125,30 +161,36 @@
           upiQr.on('loaderror', function (data) {
             console.error('Cashfree UPI QR load error:', data?.error);
             // Fallbacks: try local QR render from payment_link, else static image
-            if (payment_link && window.QRCode) {
+            if (payment_link && window.QRCode && qrMountEl) {
               renderLocalQR(payment_link);
-            } else if (image_url) {
-              document.getElementById('qr-code-wrapper').innerHTML = `
-                <img src="${image_url}" alt="UPI QR Code" class="qr-image">
-              `;
+              if (wrapperEl) wrapperEl.classList.remove('loading');
+            } else if (image_url && qrMountEl) {
+              qrMountEl.innerHTML = `<img src="${image_url}" alt="UPI QR Code" class="qr-image">`;
+              if (wrapperEl) wrapperEl.classList.remove('loading');
             } else {
               showError('Failed to load UPI QR. Please try again.');
+              if (wrapperEl) wrapperEl.classList.remove('loading');
             }
           });
 
           // Mount the component
-          upiQr.mount('#qr-code-wrapper');
+          upiQr.mount('#upi-qr');
 
           // Ready event (optional debug)
           upiQr.on('ready', function (d) {
-            // console.log('UPI QR ready:', d?.value || upiQr.data()?.value);
+            // Hide loader once component is ready
+            if (wrapperEl) wrapperEl.classList.remove('loading');
           });
         } else {
           showError('Failed to create payment order. Please try again.');
+          const wrapperEl = document.getElementById('qr-code-wrapper');
+          if (wrapperEl) wrapperEl.classList.remove('loading');
         }
       } catch (error) {
         console.error('Error generating QR/component:', error);
         showError('Error generating QR code: ' + error.message);
+        const wrapperEl = document.getElementById('qr-code-wrapper');
+        if (wrapperEl) wrapperEl.classList.remove('loading');
       }
     }
 

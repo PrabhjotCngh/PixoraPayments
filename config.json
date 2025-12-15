@@ -1,18 +1,10 @@
 {
-  "branding": {
-    "companyName": "PixoraPayments",
-    "welcomeTitle": "Welcome to Our Photobooth!",
-    "welcomeMessage": "Create amazing memories with our professional photobooth. Click Continue to get started!",
-    "backgroundColor": "#1a1a2e",
-    "primaryColor": "#16213e",
-    "accentColor": "#e94560",
-    "textColor": "#ffffff"
-  },
   "payment": {
     "amountInRupees": 200,
     "currency": "INR",
-    "description": "Photobooth Session - 4 Photos + Print",
-    "qrCodeExpiryMinutes": 0.1
+    "description": "Photobooth Session - 2 Photos + Print",
+    "qrCodeExpiryMinutes": 0.1,
+    "usePaymentGateway": false
   },
   "screens": {
     "successDuration": 3000,
@@ -20,9 +12,10 @@
     "qrCodeRefreshInterval": 30000
   },
   "assets": {
-    "logo": "./assets/logo.png",
     "background": "./assets/background.png",
-    "icon": "./assets/icon.ico"
+    "icon": "./assets/icon.ico",
+    "welcomeVideo": "../assets/welcome_screen_saver.mp4",
+    "staticQrImage": "../assets/static_qr.png"
   },
   "window": {
     "width": 1200,
@@ -32,7 +25,7 @@
     "kiosk": false,
     "alwaysOnTop": true,
     "autoHideMenuBar": true,
-    "skipTaskbar": true,
+    "skipTaskbar": false,
     "resizable": true,
     "bringToFrontOnLaunch": true
   }

@@ -5,6 +5,9 @@ const os = require('os');
 const fs = require('fs');
 require('dotenv').config();
 
+// Allow autoplay with sound without user gesture (Chromium policy)
+try { app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required'); } catch (e) {}
+
 let mainWindow;
 let serverProcess;
 const appConfig = require('./config.json');
@@ -40,8 +43,8 @@ function createWindow() {
     icon: path.join(__dirname, 'assets', 'icon.ico')
   });
 
-  // Load selection screen first
-  mainWindow.loadFile('src/select.html');
+  // Load index/welcome screen first
+  mainWindow.loadFile('src/index.html');
 
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(true);

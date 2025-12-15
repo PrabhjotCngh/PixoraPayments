@@ -23,7 +23,6 @@
     
     <div class="button-group">
       <button id="retry-btn" class="btn btn-primary">Retry Payment</button>
-      <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
     </div>
     
     <div class="countdown-text">
@@ -56,17 +55,9 @@
       // Button handlers
       document.getElementById('retry-btn').addEventListener('click', () => {
         clearTimeout(autoRedirectTimer);
-        window.location.href = 'select.html';
+        window.location.href = 'payment.html';
       });
       
-      document.getElementById('cancel-btn').addEventListener('click', async () => {
-        clearTimeout(autoRedirectTimer);
-        try {
-          await window.electronAPI.launchPhotobooth();
-        } catch (e) {
-          window.location.href = 'select.html';
-        }
-      });
     });
 
     function startCountdown() {
@@ -85,8 +76,7 @@
         
         if (countdown <= 0) {
           clearInterval(interval);
-          window.electronAPI.launchPhotobooth()
-            .catch(() => { window.location.href = 'select.html'; });
+          window.location.href = 'index.html';
         }
       }, 1000);
     }

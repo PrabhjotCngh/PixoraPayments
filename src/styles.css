@@ -17,6 +17,11 @@ body {
   cursor: pointer;
 }
 
+/* Index (welcome) page should have white background */
+.welcome-screen {
+  background: #ffffff !important;
+}
+
 .container {
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(30px) saturate(180%);
@@ -233,6 +238,17 @@ body {
   border-radius: 20px;
   display: inline-block;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+.qr-code-wrapper .loader-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  display: none;
+}
+.qr-code-wrapper.loading .loader-overlay {
+  display: block;
 }
 
 .qr-image {
@@ -241,11 +257,46 @@ body {
   display: block;
 }
 
+/* QR loader overlay */
+.qr-code-wrapper .loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 6px solid rgba(243, 108, 33, 0.2); /* light ring */
+  border-top-color: #f36c21; /* brand color */
+  animation: spin 0.9s linear infinite;
+  display: none;
+}
+.qr-code-wrapper.loading .loader {
+  display: block;
+}
+
+@keyframes spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
 .container {
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(30px) saturate(180%);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+  z-index: 1;
+}
+/* Fullscreen background video for index */
+.video-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .payment-details {
@@ -269,32 +320,6 @@ body {
   margin-top: 10px;
 }
 
-.supported-apps {
-  margin: 40px 0;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 15px;
-}
-
-.supported-apps p {
-  font-size: 18px;
-  color: #b8b8d1;
-  margin-bottom: 15px;
-}
-
-.app-logos {
-  display: flex;
-  justify-content: center;
-  gap: 30px;
-  flex-wrap: wrap;
-}
-
-.app-logos span {
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 25px;
-  font-size: 16px;
-}
 
 .timer-container {
   margin: 30px 0;
@@ -351,6 +376,25 @@ body {
   color: #f36c21;
 }
 
+/* Static QR highlight message */
+.highlight-message {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 10px 0 4px 0;
+  font-weight: 600;
+  text-align: center;
+}
+
+.tap-hint {
+  margin-top: 12px;
+  font-size: 0.95rem;
+  color: #333;
+  text-align: center;
+}
+
 .countdown-text {
   margin-top: 30px;
   font-size: 20px;
@@ -367,6 +411,14 @@ body {
   display: flex;
   justify-content: center;
   gap: 20px;
+}
+
+/* Failure screen: center single action nicely */
+.failure-screen .button-group {
+  margin-top: 30px;
+}
+.failure-screen .button-group .btn {
+  min-width: 260px;
 }
 
 /* Responsive adjustments */

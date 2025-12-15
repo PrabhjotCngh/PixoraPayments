@@ -105,6 +105,33 @@ Electron app that collects payment (via Cashfree QR) before starting a DSLR phot
 - Example bridge: see `bridge/bridge.js` (Node/Express) to launch PixoraPayments on `session_start` (optionally filtered by booth mode) and minimize DSLRBooth.
 - Logging: use `bridge/bridge-logger.js` to capture all trigger events (like RequestCatcher) while you tune the integration.
 
+### Running the Bridge on Windows (no terminal)
+
+- Option A — Batch launcher:
+   - Use `bridge/launch-bridge.bat` to start the bridge without a terminal. It appends logs to `bridge/bridge-debug.log`.
+   - Double‑click the `.bat` or place a shortcut in the Startup folder (`shell:startup`).
+
+- Option B — Task Scheduler (auto‑start at logon/boot):
+   1. Open Task Scheduler → Create Task.
+   2. General: Name `PixoraBridge`, check “Run whether user is logged on or not” and “Run with highest privileges”.
+   3. Triggers: Add “At log on” and/or “At startup”.
+   4. Actions: Program/script `node`; Arguments `C:\path\to\PixoraPayments\bridge\bridge.js`; Start in `C:\path\to\PixoraPayments`.
+   5. Settings: Enable “Allow task to be run on demand”.
+   6. Test: Right‑click task → Run. Check `http://127.0.0.1:4000/health` and `bridge\bridge-debug.log`.
+
+- Option C — NSSM (Windows Service):
+   - Install NSSM and run: `nssm install PixoraBridge`
+      - Path: `C:\Program Files\nodejs\node.exe`
+      - Arguments: `C:\path\to\PixoraPayments\bridge\bridge.js`
+      - Startup directory: `C:\path\to\PixoraPayments`
+      - I/O: Redirect to `bridge\bridge-debug.log`
+   - Start: `nssm start PixoraBridge`
+
+### Bridge endpoints
+- `GET /start` — Orchestrates: minimize DSLRBooth → launch Pixora → focus retries.
+   - Optional query tuning: `preMinimizeDelayMs`, `postLaunchDelayMs`, `focusRetries`, `focusRetryDelayMs`.
+- `GET /health` — Returns `{ ok, now, pid }` for health checks.
+
 ## Packaging (Windows)
 
 - Use `electron-builder` to produce an installer:
