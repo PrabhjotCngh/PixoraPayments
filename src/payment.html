@@ -99,6 +99,7 @@
           if (tapped) return;
           tapped = true;
           try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
+          try { await window.electronAPI.quitApp(); } catch (_) {}
         };
         document.body.addEventListener('click', tapHandler);
         document.body.addEventListener('touchstart', tapHandler);
@@ -112,6 +113,7 @@
         cancelBtn.addEventListener('click', async () => {
           cleanup();
           try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
+          try { await window.electronAPI.quitApp(); } catch (_) {}
         });
       }
     });
@@ -187,8 +189,16 @@
         
         try {
           const response = await window.electronAPI.checkPayment(qrCodeId);
-          
-          if (response.success && response.paid) {
+          // Check amount as well to avoid false positives
+          const expectedAmount = Number(document.getElementById('amount').textContent);
+          const paidAmount = Number(
+            (response.amountInRupees !== undefined ? response.amountInRupees :
+             response.amount !== undefined ? response.amount / 100 : // if in paise
+             0)
+          );
+          const amountMatches = Number.isFinite(paidAmount) && paidAmount === expectedAmount;
+
+          if (response.success && response.paid && amountMatches) {
             cleanup();
             // Payment success -> show success screen
             window.location.href = 'success.html';

@@ -22,7 +22,7 @@
     "height": 800,
     "fullscreen": true,
     "frame": true,
-    "kiosk": false,
+    "kiosk": true,
     "alwaysOnTop": true,
     "autoHideMenuBar": true,
     "skipTaskbar": false,

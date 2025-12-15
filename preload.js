@@ -4,6 +4,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // Launch photobooth app
   launchPhotobooth: () => ipcRenderer.invoke('launch-photobooth'),
+  // Quit the Pixora app
+  quitApp: () => ipcRenderer.invoke('quit-app'),
   // Restore window or launch photobooth if not running (Windows)
   restoreOrLaunchPhotobooth: () => ipcRenderer.invoke('restore-or-launch-photobooth'),
   

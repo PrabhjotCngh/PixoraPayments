@@ -47,8 +47,8 @@ function createWindow() {
   mainWindow.loadFile('src/payment.html');
 
   // Production: hide menu bar and do not open DevTools
-  mainWindow.setMenuBarVisibility(true);
-  mainWindow.webContents.openDevTools();
+  mainWindow.setMenuBarVisibility(false);
+  //mainWindow.webContents.openDevTools();
   mainWindow.webContents.on('did-finish-load', () => {
     try { fs.appendFileSync('debug.log', `${new Date().toISOString()} mainWindow did-finish-load: ${mainWindow.webContents.getURL()}\n`); } catch(e){}
     console.log('mainWindow did-finish-load', mainWindow.webContents.getURL());
@@ -113,70 +113,18 @@ function startWebhookServer() {
   try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Webhook server spawned (pid=${serverProcess.pid})\n`); } catch (e) {}
 }
 
-// Launch DSLR Photobooth app
-ipcMain.handle('launch-photobooth', async () => {
-  const photoboothPath = process.env.PHOTOBOOTH_APP_PATH;
-  
-  // Only support launching on Windows; safely no-op elsewhere
-  if (process.platform !== 'win32') {
-    return { success: false, error: 'Photobooth launch is only supported on Windows' };
-  }
-
-  if (!photoboothPath) {
-    return { success: false, error: 'Photobooth app path not configured' };
-  }
-
-  // Validate path exists before attempting spawn
-  try {
-    const fs = require('fs');
-    if (!fs.existsSync(photoboothPath)) {
-      return { success: false, error: `Photobooth executable not found at path: ${photoboothPath}` };
-    }
-  } catch (e) {
-    // If FS check fails, proceed but capture diagnostic
-    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} FS existsSync check failed: ${e}\n`); } catch (ee) {}
-  }
-
-  try {
-    // Launch the photobooth application
-    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} launch-photobooth spawn: ${photoboothPath}\n`); } catch (e) {}
-    spawn(photoboothPath, [], {
-      detached: true,
-      stdio: 'ignore'
-    }).unref();
-
-    // Wait 2 seconds then close launcher
-    setTimeout(() => {
-      app.quit();
-    }, 2000);
-
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to launch photobooth app:', error);
-    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Failed to launch photobooth app: ${error}\n`); } catch (e) {}
-    return { success: false, error: error.message };
-  }
-});
-
 // Get configuration
 ipcMain.handle('get-config', async () => {
   const config = require('./config.json');
   return config;
 });
 
-// Allow the renderer (or bridge) to exit kiosk/alwaysOnTop at runtime
-ipcMain.handle('exit-kiosk', async () => {
-  if (!mainWindow) return { success: false, error: 'no window' };
+// Quit the Pixora app on demand
+ipcMain.handle('quit-app', async () => {
   try {
-    if (typeof mainWindow.setKiosk === 'function') mainWindow.setKiosk(false);
-    if (typeof mainWindow.setAlwaysOnTop === 'function') mainWindow.setAlwaysOnTop(false);
-    if (typeof mainWindow.setFullScreen === 'function') mainWindow.setFullScreen(false);
-    if (typeof mainWindow.setSkipTaskbar === 'function') mainWindow.setSkipTaskbar(false);
-    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} exit-kiosk invoked; kiosk/alwaysOnTop cleared
-`); } catch (e) {}
+    app.quit();
     return { success: true };
   } catch (e) {
-    console.error('Failed exit-kiosk:', e);
     return { success: false, error: e.message };
   }
 });
@@ -215,90 +163,4 @@ app.on('window-all-closed', function () {
     serverProcess.kill();
   }
   if (process.platform !== 'darwin') app.quit();
-});
-
-// Restore minimized photobooth or launch if not running
-ipcMain.handle('restore-or-launch-photobooth', async () => {
-  const photoboothPath = process.env.PHOTOBOOTH_APP_PATH;
-  const windowTitle = process.env.PHOTOBOOTH_WINDOW_TITLE || 'dslrbooth - Choose an effect';
-
-  if (!photoboothPath) {
-    return { success: false, error: 'Photobooth app path not configured' };
-  }
-
-  try {
-    // Run a PowerShell script to attempt to find the photobooth window by title
-    // If found: Restore + SetForegroundWindow; otherwise, start the exe.
-    const { spawnSync } = require('child_process');
-    const psScript = `
-  try {
-  Add-Type -Namespace User32 -Name Api -MemberDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public class WinApi {
-    [DllImport("user32.dll")]
-    public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
-    [DllImport("user32.dll")]
-    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-    [DllImport("user32.dll")]
-    public static extern bool SetForegroundWindow(IntPtr hWnd);
-}
-'@;
-} catch { Write-Output "ADD_TYPE_FAILED: $($_)"; exit 2 }
-$h = [User32.Api]::FindWindow($null, '${windowTitle}');
-if ($h -ne [IntPtr]::Zero) {
-  [User32.Api]::ShowWindow($h, 9) | Out-Null; # 9 = Restore
-  [User32.Api]::SetForegroundWindow($h) | Out-Null;
-  Write-Output 'RESTORED';
-} else {
-  Start-Process -FilePath "${photoboothPath}" -WindowStyle Maximized -WorkingDirectory (Split-Path -Parent "${photoboothPath}")
-  Write-Output 'LAUNCHED';
-}
-try { } catch { Write-Output "UNEXPECTED_ERROR: $($_)"; exit 3 }
-`;
-
-  const tmpFile = path.join(os.tmpdir(), `pixora_restore_${Date.now()}_${process.pid}.ps1`);
-  try { fs.writeFileSync(tmpFile, psScript, 'utf8'); } catch (e) { try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Failed to write PS temp file: ${e}\n`); } catch (ee) {} throw e; }
-  try { fs.appendFileSync('debug.log', `${new Date().toISOString()} restore-or-launch using PhotoBooth Path: ${photoboothPath}; WindowTitle: ${windowTitle}; script=${tmpFile}\n`); } catch (e) {}
-    let spawnRes = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', tmpFile], { windowsHide: true, encoding: 'utf8' });
-    // If running Windows PowerShell fails to execute the script, try pwsh (PowerShell Core)
-    if ((!spawnRes || spawnRes.status !== 0) && process.platform === 'win32') {
-      try {
-        try { fs.appendFileSync('debug.log', `${new Date().toISOString()} powershell.exe failed, attempting pwsh fallback\n`); } catch (ee) {}
-        spawnRes = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', tmpFile], { windowsHide: true, encoding: 'utf8' });
-      } catch (e) {
-        try { fs.appendFileSync('debug.log', `${new Date().toISOString()} pwsh fallback failed: ${e}\n`); } catch (ee) {}
-      }
-    }
-    const stdout = (spawnRes && spawnRes.stdout) ? spawnRes.stdout : '';
-    const stderr = (spawnRes && spawnRes.stderr) ? spawnRes.stderr : '';
-    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} restore-or-launch stdout:${stdout} stderr:${stderr}\n`); } catch (e) {}
-    try { fs.unlinkSync(tmpFile); } catch (e) {}
-
-    if (stderr && stderr.length) {
-      console.warn('PowerShell restore/launch stderr:', stderr);
-      try { fs.appendFileSync('debug.log', `${new Date().toISOString()} restore-or-launch stderr: ${stderr}\n`); } catch (e) {}
-    }
-
-    // If the script reported compile errors, try to print the first line markers to help debug
-    if (stdout && stdout.indexOf('ADD_TYPE_FAILED') !== -1) {
-      try { fs.appendFileSync('debug.log', `${new Date().toISOString()} PowerShell ADD_TYPE_FAILED: ${stdout}\n`); } catch (e) {}
-    }
-
-    if (stdout.indexOf('RESTORED') !== -1 || stdout.indexOf('LAUNCHED') !== -1) {
-      // If restored or launched, quit Pixora (the photobooth will be in foreground)
-      setTimeout(() => {
-        app.quit();
-      }, 1000);
-      try { fs.appendFileSync('debug.log', `${new Date().toISOString()} restore-or-launch succeeded; quitting Pixora.\n`); } catch (e) {}
-      return { success: true };
-    }
-
-    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} restore-or-launch unknown result stdout:${stdout} stderr:${stderr}\n`); } catch (e) {}
-    return { success: false, error: 'Unknown result from PowerShell', details: { stdout, stderr } };
-  } catch (error) {
-    console.error('Failed to restore or launch photobooth:', error);
-    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} restore-or-launch failed: ${error}\n`); } catch (e) {}
-    return { success: false, error: error.message };
-  }
 });

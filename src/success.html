@@ -33,13 +33,14 @@
       
       document.getElementById('countdown').textContent = countdown;
       
-      const interval = setInterval(() => {
+      const interval = setInterval(async () => {
         countdown--;
         document.getElementById('countdown').textContent = countdown;
         
         if (countdown <= 0) {
           clearInterval(interval);
           try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
+          try { await window.electronAPI.quitApp(); } catch (_) {}
         }
       }, 1000);
     });
