@@ -39,20 +39,10 @@
         
         if (countdown <= 0) {
           clearInterval(interval);
-          launchPhotobooth();
+          try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
         }
       }, 1000);
     });
-
-    async function launchPhotobooth() {
-      const result = await window.electronAPI.launchPhotobooth();
-      
-      if (!result.success) {
-        alert('Failed to launch photobooth: ' + result.error);
-        window.location.href = 'index.html';
-      }
-      // App will close automatically after launching photobooth
-    }
   </script>
 </body>
 </html>

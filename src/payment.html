@@ -111,7 +111,7 @@
       if (cancelBtn) {
         cancelBtn.addEventListener('click', async () => {
           cleanup();
-          try { await window.electronAPI.launchPhotobooth(); } catch (e) {}
+          try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
         });
       }
     });
@@ -190,8 +190,6 @@
           
           if (response.success && response.paid) {
             cleanup();
-            // Notify bridge that payment completed
-            try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
             // Payment success -> show success screen
             window.location.href = 'success.html';
           }

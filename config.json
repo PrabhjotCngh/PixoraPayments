@@ -20,13 +20,13 @@
   "window": {
     "width": 1200,
     "height": 800,
-    "fullscreen": false,
+    "fullscreen": true,
     "frame": true,
     "kiosk": false,
     "alwaysOnTop": true,
     "autoHideMenuBar": true,
     "skipTaskbar": false,
-    "resizable": true,
+    "resizable": false,
     "bringToFrontOnLaunch": true
   }
 }
