@@ -17,6 +17,9 @@
     "welcomeVideo": "../assets/welcome_screen_saver.mp4",
     "staticQrImage": "../assets/static_qr.png"
   },
+  "bridge": {
+    "baseUrl": "http://127.0.0.1:4000"      
+  },
   "window": {
     "width": 1200,
     "height": 800,

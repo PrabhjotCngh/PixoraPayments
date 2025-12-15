@@ -39,7 +39,7 @@
         
         if (countdown <= 0) {
           clearInterval(interval);
-          try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
+          try { await window.electronAPI.notifyPaymentComplete(); } catch (_) {}
           try { await window.electronAPI.quitApp(); } catch (_) {}
         }
       }, 1000);
