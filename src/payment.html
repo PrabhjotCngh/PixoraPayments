@@ -11,11 +11,6 @@
 <body class="payment-screen" style="background-image: url('../assets/payment_background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
   <div class="container">
     <div class="payment-header" style="position:relative;">
-      <!-- Back arrow aligned to container's left with padding -->
-      <button id="back-btn" aria-label="Back" title="Back" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); background:transparent; border:none; padding:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
-        <span style="display:inline-block; width:22px; height:22px; border-left:3px solid #fff; border-bottom:3px solid #fff; transform:rotate(45deg);"></span>
-      </button>
-      <!-- Centered title unaffected by arrow position -->
       <h1 class="title" style="margin:0; text-align:center;">Scan & Pay</h1>
       <p class="subtitle">Scan the QR code with any UPI app to complete payment</p>
     </div>
@@ -59,14 +54,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       config = await window.electronAPI.getConfig();
 
-      // Back button to change selection
-      const backBtn = document.getElementById('back-btn');
-      if (backBtn) {
-        backBtn.addEventListener('click', () => {
-          cleanup();
-          window.location.href = 'index.html';
-        });
-      }
+      // Back button removed per latest flow
 
       // Read selection from localStorage (fallback to config)
       const selectedAmount = parseInt(localStorage.getItem('orderAmount') || '', 10);
@@ -119,12 +107,12 @@
         startExpiryTimer(config.payment.qrCodeExpiryMinutes * 60);
       }
       
-      // Cancel button -> go back to index
+      // Cancel button -> launch DSLR app
       const cancelBtn = document.getElementById('cancel-btn');
       if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => {
+        cancelBtn.addEventListener('click', async () => {
           cleanup();
-          window.location.href = 'index.html';
+          try { await window.electronAPI.launchPhotobooth(); } catch (e) {}
         });
       }
     });

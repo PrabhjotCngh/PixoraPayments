@@ -44,7 +44,7 @@ function createWindow() {
   });
 
   // Load index/welcome screen first
-  mainWindow.loadFile('src/index.html');
+  mainWindow.loadFile('src/payment.html');
 
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(true);

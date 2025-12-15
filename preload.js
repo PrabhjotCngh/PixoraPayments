@@ -4,6 +4,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // Launch photobooth app
   launchPhotobooth: () => ipcRenderer.invoke('launch-photobooth'),
+  // Restore window or launch photobooth if not running (Windows)
+  restoreOrLaunchPhotobooth: () => ipcRenderer.invoke('restore-or-launch-photobooth'),
   
   // Get configuration
   getConfig: () => ipcRenderer.invoke('get-config'),

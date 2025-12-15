@@ -70,13 +70,13 @@
         progressBar.style.width = '0%';
       }, 50);
       
-      const interval = setInterval(() => {
+      const interval = setInterval(async () => {
         countdown--;
         document.getElementById('countdown').textContent = countdown;
         
         if (countdown <= 0) {
           clearInterval(interval);
-          window.location.href = 'index.html';
+          try { await window.electronAPI.launchPhotobooth(); } catch (e) {}
         }
       }, 1000);
     }
