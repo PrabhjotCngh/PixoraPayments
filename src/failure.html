@@ -76,7 +76,7 @@
         
         if (countdown <= 0) {
           clearInterval(interval);
-          try { await window.electronAPI.launchPhotobooth(); } catch (e) {}
+          try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
         }
       }, 1000);
     }

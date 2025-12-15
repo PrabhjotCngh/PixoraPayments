@@ -54,7 +54,6 @@
     window.addEventListener('DOMContentLoaded', async () => {
       config = await window.electronAPI.getConfig();
 
-      // Back button removed per latest flow
 
       // Read selection from localStorage (fallback to config)
       const selectedAmount = parseInt(localStorage.getItem('orderAmount') || '', 10);
@@ -99,7 +98,7 @@
         const tapHandler = async () => {
           if (tapped) return;
           tapped = true;
-          try { await window.electronAPI.launchPhotobooth(); } catch (e) { /* noop */ }
+          try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
         };
         document.body.addEventListener('click', tapHandler);
         document.body.addEventListener('touchstart', tapHandler);
@@ -191,6 +190,8 @@
           
           if (response.success && response.paid) {
             cleanup();
+            // Notify bridge that payment completed
+            try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
             // Payment success -> show success screen
             window.location.href = 'success.html';
           }
