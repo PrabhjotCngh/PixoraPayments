@@ -6,7 +6,7 @@
   <title>Payment Failed</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="failure-screen" style="background-image: url('../assets/payment_background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+<body class="failure-screen" style="background-image: url('../assets/background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
   <div class="progress-bar-container">
     <div id="progress-bar" class="progress-bar"></div>
   </div>
@@ -76,7 +76,7 @@
         
         if (countdown <= 0) {
           clearInterval(interval);
-          try { fetch('http://127.0.0.1:4000/?event_type=payment_complete').catch(() => {}); } catch (_) {}
+            try { await window.electronAPI.notifyPaymentComplete(); } catch (_) {}
           try { await window.electronAPI.quitApp(); } catch (_) {}
         }
       }, 1000);

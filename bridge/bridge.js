@@ -8,21 +8,33 @@ const DEFAULT_PIXORA_EXE = 'C:\\\Users\\sw\\AppData\\Local\\Programs\\PixoraPaym
 const PIXORA_EXE = path.normalize(String(process.env.PIXORA_EXE || DEFAULT_PIXORA_EXE).replace(/^\s*"(.*)"\s*$/, '$1').replace(/^\s*'(.*)'\s*$/, '$1').trim());
 
 const app = express();
+// Simple IST timestamped logger
+function ts() {
+  try { return new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }); } catch (_) { return new Date().toISOString(); }
+}
+function log(message) {
+  try { fs.appendFileSync('bridge-debug.log', `${ts()} ${message}\n`); } catch (_) {}
+}
 
 function launchPixora() {
   try {
+    log(`launchPixora start platform=${process.platform} exe=${PIXORA_EXE}`);
     // 1. Basic checks
     if (process.platform === 'darwin') {
-      spawn('open', ['-a', 'PixoraPayments'], { stdio: 'ignore' });
+      const child = spawn('open', ['-a', 'PixoraPayments'], { stdio: 'ignore' });
+      child.on('error', (err) => { log(`open -a error: ${err}`); });
+      log('macOS open -a PixoraPayments invoked');
       return;
     }
 
     if (!fs.existsSync(PIXORA_EXE)) {
       console.error('Pixora executable not found at:', PIXORA_EXE);
+      log(`Pixora exe not found at ${PIXORA_EXE}`);
       return;
     }
 
     console.log('Minimizing DSLRBooth and launching Pixora...');
+    log('Minimizing DSLRBooth and launching Pixora...');
 
     // 2. PowerShell: Force Minimize DSLRBooth -> Launch Pixora
     const psScript = `
@@ -76,9 +88,12 @@ function launchPixora() {
 
     ps.stdout.on('data', (d) => console.log('PS:', d.toString().trim()));
     ps.stderr.on('data', (d) => console.error('PS Err:', d.toString().trim()));
+    ps.stdout.on('data', (d) => { log(`PS stdout: ${d.toString().trim()}`); });
+    ps.stderr.on('data', (d) => { log(`PS stderr: ${d.toString().trim()}`); });
 
   } catch (e) {
     console.error('Failed to launch PixoraPayments:', e);
+    log(`launchPixora error: ${e}`);
   }
 }
 
@@ -86,10 +101,13 @@ function launchPixora() {
 app.get('/', (req, res) => {
   const event = req.query.event_type || req.query.event || '';
   console.log(new Date().toISOString(), 'bridge event:', event);
+  log(`GET / event=${event} query=${JSON.stringify(req.query)}`);
 
   if (event === 'session_start') {
+    log('session_start -> launchPixora');
     launchPixora();
   } else if (event === 'payment_complete') {
+    log('payment_complete -> restoreDSLRBooth');
     restoreDSLRBooth(); 
   }
   res.send('OK');
@@ -119,9 +137,12 @@ function restoreDSLRBooth() {
     }
   `;
   
-  spawn('powershell.exe', ['-Command', psRestore], { windowsHide: true });
+  log('restoreDSLRBooth invoking PowerShell');
+  const child = spawn('powershell.exe', ['-Command', psRestore], { windowsHide: true });
+  child.on('error', (err) => { log(`restoreDSLRBooth PS error: ${err}`); });
 }
 
 app.listen(4000, () => {
   console.log('PixoraBridge listening on http://127.0.0.1:4000');
+  log('Bridge listening on http://127.0.0.1:4000');
 });

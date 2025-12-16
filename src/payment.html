@@ -8,7 +8,8 @@
   <!-- Cashfree UI SDK for UPI components (use stable alias to avoid 404s) -->
   <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 </head>
-<body class="payment-screen" style="background-image: url('../assets/payment_background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+<body class="payment-screen" style="background-image: url('../assets/background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+
   <div class="container">
     <div class="payment-header" style="position:relative;">
       <h1 class="title" style="margin:0; text-align:center;">Scan & Pay</h1>
@@ -43,7 +44,6 @@
     <div id="status-message" class="status-message"></div>
   </div>
 
-  <script src="script.js"></script>
   <script>
     let qrCodeId = null;
     let paymentCheckInterval = null;
@@ -184,6 +184,7 @@
     }
 
     function startPaymentCheck() {
+      const pollMs = (config && config.screens && Number(config.screens.qrCodeRefreshInterval)) || 2000;
       paymentCheckInterval = setInterval(async () => {
         if (!qrCodeId) return;
         
@@ -207,7 +208,7 @@
         } catch (error) {
           console.error('Error checking payment:', error);
         }
-      }, 2000); // Check every 2 seconds
+      }, pollMs); // Poll interval from config (ms), fallback 2000ms
     }
 
     function startExpiryTimer(seconds) {

@@ -1,9 +1,7 @@
 {
   "payment": {
     "amountInRupees": 200,
-    "currency": "INR",
-    "description": "Photobooth Session - 2 Photos + Print",
-    "qrCodeExpiryMinutes": 0.1,
+    "qrCodeExpiryMinutes": 2,
     "usePaymentGateway": false
   },
   "screens": {
