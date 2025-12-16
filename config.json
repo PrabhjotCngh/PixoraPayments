@@ -26,7 +26,7 @@
     "kiosk": true,
     "alwaysOnTop": true,
     "autoHideMenuBar": true,
-    "skipTaskbar": false,
+    "skipTaskbar": true,
     "resizable": false,
     "bringToFrontOnLaunch": true
   }
