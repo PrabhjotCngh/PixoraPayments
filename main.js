@@ -48,7 +48,7 @@ function createWindow() {
 
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(false);
-  //mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
   mainWindow.webContents.on('did-finish-load', () => {
     try { fs.appendFileSync('debug.log', `${new Date().toISOString()} mainWindow did-finish-load: ${mainWindow.webContents.getURL()}\n`); } catch(e){}
     console.log('mainWindow did-finish-load', mainWindow.webContents.getURL());
@@ -134,6 +134,13 @@ ipcMain.handle('get-cashfree-app-id', async () => {
   return process.env.CASHFREE_APP_ID;
 });
 
+// Get Cashfree ENV (sandbox|production)
+ipcMain.handle('get-cashfree-env', async () => {
+  const env = (process.env.CASHFREE_ENV || '').toLowerCase();
+  if (env === 'production') return 'production';
+  return 'sandbox';
+});
+
 // Allow programmatic bring-to-front from UI or other processes
 ipcMain.handle('bring-to-front', async () => {
   if (!mainWindow) return { success: false, error: 'no window' };
@@ -150,7 +157,15 @@ ipcMain.handle('bring-to-front', async () => {
 
 // App lifecycle
 app.whenReady().then(() => {
-  startWebhookServer();
+    const useLocal = (process.env.USE_LOCAL_BACKEND || '').trim().toLowerCase();
+    if (useLocal === 'true' || useLocal === '1') {
+      console.log('Starting local backend (USE_LOCAL_BACKEND enabled)');
+      try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Starting local backend (USE_LOCAL_BACKEND)\n`); } catch (e) {}
+      startWebhookServer();
+    } else {
+      console.log('Skipping local backend spawn (using hosted APIs)');
+      try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Skipping local backend spawn (hosted APIs)\n`); } catch (e) {}
+    }
   createWindow();
 
   app.on('activate', function () {

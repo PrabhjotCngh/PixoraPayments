@@ -2,12 +2,12 @@
   "payment": {
     "amountInRupees": 200,
     "qrCodeExpiryMinutes": 2,
-    "usePaymentGateway": false
+    "usePaymentGateway": true
   },
   "screens": {
     "successDuration": 3000,
     "failureDuration": 3000,
-    "qrCodeRefreshInterval": 30000
+    "qrCodeRefreshInterval": 3000
   },
   "assets": {
     "background": "./assets/background.png",
@@ -15,18 +15,21 @@
     "welcomeVideo": "../assets/welcome_screen_saver.mp4",
     "staticQrImage": "../assets/static_qr.png"
   },
+  "cashfree": {
+    "mode": "production"
+  },
   "bridge": {
-    "baseUrl": "http://127.0.0.1:4000"      
+    "baseUrl": "https://pixora.textberry.io"      
   },
   "window": {
     "width": 1200,
     "height": 800,
-    "fullscreen": true,
+    "fullscreen": false,
     "frame": true,
-    "kiosk": true,
+    "kiosk": false,
     "alwaysOnTop": true,
     "autoHideMenuBar": true,
-    "skipTaskbar": true,
+    "skipTaskbar": false,
     "resizable": false,
     "bringToFrontOnLaunch": true
   }

@@ -7,8 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Notify bridge that payment is complete (single source)
   notifyPaymentComplete: async () => {
     try {
-      // Read bridge base from config if present, else default to localhost
-      let base = 'http://127.0.0.1:4000';
+      // Read bridge base from config if present, else default to server url
+      let base = 'https://pixora.textberry.io';
       try {
         const cfg = await ipcRenderer.invoke('get-config');
         if (cfg && cfg.bridge && cfg.bridge.baseUrl) {
@@ -28,10 +28,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Get Cashfree App ID
   getCashfreeAppId: () => ipcRenderer.invoke('get-cashfree-app-id'),
+  // Get Cashfree ENV
+  getCashfreeEnv: () => ipcRenderer.invoke('get-cashfree-env'),
   
   // Payment APIs
   createQRCode: (amount, description) => {
-    return fetch('http://localhost:3000/api/create-qr', {
+    return fetch('https://pixora.textberry.io/api/create-qr', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount, description })
@@ -39,7 +41,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   
   checkPayment: (qrCodeId) => {
-    return fetch(`http://localhost:3000/api/check-payment/${qrCodeId}`)
+    return fetch(`https://pixora.textberry.io/api/check-payment/${qrCodeId}`)
       .then(res => res.json());
   }
   

@@ -7,7 +7,47 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
-const PORT = process.env.WEBHOOK_PORT || 3000;
+// Curl-style request/response logging to console
+app.use((req, res, next) => {
+  try {
+    const host = req.get('host') || 'localhost';
+    const protocol = req.protocol || 'http';
+    const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+
+    const headerFlags = Object.entries(req.headers || {})
+      .filter(([k]) => !['connection'].includes(k.toLowerCase()))
+      .map(([k, v]) => `-H '${k}: ${String(v)}'`)
+      .join(' ');
+
+    let dataFlag = '';
+    if (req.method !== 'GET' && req.body && Object.keys(req.body).length) {
+      const bodyStr = JSON.stringify(req.body);
+      const escaped = bodyStr.replace(/'/g, `'\\''`);
+      dataFlag = `--data '${escaped}'`;
+    }
+
+    const curl = [`curl -X ${req.method}`, `'${fullUrl}'`, headerFlags, dataFlag]
+      .filter(Boolean)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    console.log(`REQUEST curl: ${curl}`);
+
+    const origJson = res.json.bind(res);
+    const origSend = res.send.bind(res);
+    res.json = (body) => { res.locals._respBody = body; return origJson(body); };
+    res.send = (body) => { res.locals._respBody = body; return origSend(body); };
+
+    res.on('finish', () => {
+      let out = res.locals._respBody;
+      try { if (typeof out !== 'string') out = JSON.stringify(out); } catch (_) {}
+      if (out && out.length > 5000) out = out.slice(0, 5000) + '... [truncated]';
+      console.log(`RESPONSE ${req.method} ${req.originalUrl} -> ${res.statusCode}${out ? `\n${out}` : ''}`);
+    });
+  } catch (_) {}
+  next();
+});
 
 // Initialize Cashfree v5.1.0 client
 const cfEnv = process.env.CASHFREE_ENV === 'production' ? Cashfree.PRODUCTION : Cashfree.SANDBOX;
@@ -39,7 +79,7 @@ app.post('/api/create-qr', async (req, res) => {
           customer_phone: '9999999999'
         },
         order_meta: {
-          notify_url: `http://localhost:${PORT}/webhook`,
+          notify_url: `https://pixora.textberry.io/webhook`,
           payment_methods: "upi"
         }
       },
@@ -172,7 +212,7 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Webhook server running on http://localhost:${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
+app.listen( () => {
+  console.log(`Webhook server running on https://pixora.textberry.io`);
+  console.log(`Health check: https://pixora.textberry.io/health`);
 });

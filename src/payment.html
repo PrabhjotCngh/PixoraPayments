@@ -130,8 +130,15 @@
           const { id, order_id, payment_session_id, payment_link, image_url } = response.qrCode;
           qrCodeId = order_id || id;
 
-          // Initialize Cashfree UI SDK
-          const cashfree = Cashfree({ mode: (window.location.hostname === 'localhost' ? 'sandbox' : 'production') });
+          // Initialize Cashfree UI SDK using env (fallback to hostname heuristic)
+          let cfMode = 'production';
+          try {
+            const envMode = await (window.electronAPI && window.electronAPI.getCashfreeEnv ? window.electronAPI.getCashfreeEnv() : Promise.resolve('production'));
+            cfMode = (envMode === 'production') ? 'production' : 'sandbox';
+          } catch (_) {
+            cfMode = (window.location.hostname === 'localhost' ? 'sandbox' : 'production');
+          }
+          const cashfree = Cashfree({ mode: cfMode });
 
           // Mount the UPI QR component into the dedicated container
           const wrapperEl = document.getElementById('qr-code-wrapper');

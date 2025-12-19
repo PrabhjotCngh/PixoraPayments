@@ -7,7 +7,7 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 - Prereqs: Install Node.js LTS and Git.
 - Install deps: `npm install`
 - Create `.env` in project root:
-  - `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV` (`sandbox`|`production`), `CASHFREE_API_VERSION`, `WEBHOOK_PORT`
+  - `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV` (`sandbox`|`production`), `CASHFREE_API_VERSION`
   - Optional: `PHOTOBOOTH_APP_PATH` (Windows path to DSLRBooth exe)
 - Run: `npm start`
 
@@ -17,7 +17,7 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 - `payment.qrCodeExpiryMinutes`: minutes for QR validity (timer and failure redirect).
 - `assets.staticQrImage`: path to the static QR image used when gateway is off.
 - `assets.welcomeVideo`: background video for index page.
-- `bridge.baseUrl`: base URL for the Windows bridge (default `http://127.0.0.1:4000`).
+- `bridge.baseUrl`: base URL for the Windows bridge (default `https://pixora.textberry.io`).
 - `window`: kiosk/fullscreen/alwaysOnTop and bring-to-front behavior.
 
 ## Screens & Behavior
@@ -29,7 +29,8 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 - `payment.html` (Scan & Pay)
   - Gateway mode:
     - Creates order via backend and renders Cashfree UPI QR.
-    - Polls status every 2s. Treats as success only if `paid` and the amount matches the initially selected amount.
+    - Cashfree UI SDK mode is driven by `.env` `CASHFREE_ENV` (`sandbox`|`production`).
+    - Polls status at the configured interval (`screens.qrCodeRefreshInterval`). Treats as success only if `paid` and the amount matches the initially selected amount.
     - On success: notifies bridge (`notifyPaymentComplete`) and quits Pixora.
   - Static mode:
     - Renders `assets.staticQrImage` and shows a highlight message.
@@ -52,6 +53,7 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 
 - `getConfig()`: read `config.json`.
 - `getCashfreeAppId()`: read Cashfree APP ID from env.
+- `getCashfreeEnv()`: read `CASHFREE_ENV` from `.env` (`sandbox`|`production`).
 - `createQRCode(amount, description)`: backend call to create order.
 - `checkPayment(orderId)`: backend call to check payment status.
 - `quitApp()`: closes the Electron app.
@@ -62,6 +64,15 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 - `POST /api/create-qr`: creates Cashfree order and returns QR details.
 - `GET /api/check-payment/:orderId`: returns success and amount so UI can verify.
 - Webhook endpoint (optional): for signature-verified updates in production.
+
+### Local Backend (dev toggle)
+
+- Purpose: The app can spawn a local Express server (`server.js`) during development to:
+  - Simulate/inspect Cashfree REST calls locally with curl-style logs.
+  - Test webhooks and payment polling without relying on hosted endpoints.
+  - Iterate quickly when offline or in an isolated network.
+- Enable: Add `USE_LOCAL_BACKEND=true` to `.env`.
+- Behavior: When enabled, Electron spawns the local server on app start; when disabled, the app uses hosted APIs at `https://pixora.textberry.io` and skips spawning.
 
 ## Bridge (`bridge/bridge.js`)
 

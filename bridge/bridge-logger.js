@@ -21,8 +21,7 @@ app.get('/', (req, res) => {
   res.send('OK');
 });
 
-const PORT = process.env.PIXORA_LOGGER_PORT ? Number(process.env.PIXORA_LOGGER_PORT) : 3001;
-app.listen(PORT, () => {
-  console.log(`PixoraBridge Logger listening on http://127.0.0.1:${PORT}`);
+app.listen( () => {
+  console.log(`PixoraBridge Logger listening on https://pixora.textberry.io`);
   console.log(`Logging to ${LOG_PATH}`);
 });

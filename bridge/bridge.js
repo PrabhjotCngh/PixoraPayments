@@ -3,9 +3,40 @@ const { spawn, execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-// Configurable via env, with sensible Windows default
-const DEFAULT_PIXORA_EXE = 'C:\\\Users\\sw\\AppData\\Local\\Programs\\PixoraPayments\\PixoraPayments.exe';
-const PIXORA_EXE = path.normalize(String(process.env.PIXORA_EXE || DEFAULT_PIXORA_EXE).replace(/^\s*"(.*)"\s*$/, '$1').replace(/^\s*'(.*)'\s*$/, '$1').trim());
+// Resolve PixoraPayments.exe dynamically across machines
+function sanitize(p) {
+  return String(p || '').replace(/^\s*"|"\s*$/g, '').replace(/^\s*'|'\s*$/g, '').trim();
+}
+function resolvePixoraExe() {
+  const candidates = [];
+  const envOverride = sanitize(process.env.PIXORA_EXE);
+  if (envOverride) candidates.push(path.normalize(envOverride));
+
+  if (process.platform === 'win32') {
+    const local = process.env.LOCALAPPDATA;
+    if (local) candidates.push(path.join(local, 'Programs', 'PixoraPayments', 'PixoraPayments.exe'));
+    const userprofile = process.env.USERPROFILE;
+    if (userprofile) candidates.push(path.join(userprofile, 'AppData', 'Local', 'Programs', 'PixoraPayments', 'PixoraPayments.exe'));
+    const pf = process.env['ProgramFiles'];
+    if (pf) candidates.push(path.join(pf, 'PixoraPayments', 'PixoraPayments.exe'));
+    const pf86 = process.env['ProgramFiles(x86)'];
+    if (pf86) candidates.push(path.join(pf86, 'PixoraPayments', 'PixoraPayments.exe'));
+  }
+
+  // Deduplicate and return first existing path
+  const seen = new Set();
+  for (const p of candidates) {
+    const norm = path.normalize(p);
+    if (seen.has(norm)) continue;
+    seen.add(norm);
+    try { if (fs.existsSync(norm)) return norm; } catch (_) {}
+  }
+
+  // Fallback: return first candidate (may not exist) or a generic name
+  return candidates[0] || 'PixoraPayments.exe';
+}
+const PIXORA_EXE = resolvePixoraExe();
+try { log(`Resolved Pixora exe: ${PIXORA_EXE} exists=${fs.existsSync(PIXORA_EXE)}`); } catch (_) {}
 
 const app = express();
 // Simple IST timestamped logger
@@ -113,6 +144,21 @@ app.get('/', (req, res) => {
   res.send('OK');
 });
 
+// Health endpoint for quick diagnostics of resolved paths
+app.get('/health', (req, res) => {
+  let exists = false;
+  try { exists = fs.existsSync(PIXORA_EXE); } catch (_) {}
+  const payload = {
+    status: 'ok',
+    time: ts(),
+    platform: process.platform,
+    pixoraExe: PIXORA_EXE,
+    pixoraExeExists: exists
+  };
+  try { log(`GET /health -> ${JSON.stringify(payload)}`); } catch (_) {}
+  res.json(payload);
+});
+
 function restoreDSLRBooth() {
   if (process.platform !== 'win32') return;
   
@@ -143,6 +189,7 @@ function restoreDSLRBooth() {
 }
 
 app.listen(4000, () => {
-  console.log('PixoraBridge listening on http://127.0.0.1:4000');
-  log('Bridge listening on http://127.0.0.1:4000');
+  console.log('PixoraBridge listening on https://pixora.textberry.io');
+  log('Bridge listening on https://pixora.textberry.io');
+  try { log(`Startup resolved Pixora exe: ${PIXORA_EXE} exists=${fs.existsSync(PIXORA_EXE)}`); } catch (_) {}
 });
