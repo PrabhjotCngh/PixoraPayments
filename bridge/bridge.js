@@ -2,6 +2,7 @@ const express = require('express');
 const { spawn, execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const WebSocket = require('ws');
 
 // Resolve PixoraPayments.exe dynamically across machines
 function sanitize(p) {
@@ -39,6 +40,8 @@ const PIXORA_EXE = resolvePixoraExe();
 try { log(`Resolved Pixora exe: ${PIXORA_EXE} exists=${fs.existsSync(PIXORA_EXE)}`); } catch (_) {}
 
 const app = express();
+app.use(express.json());
+const clients = new Map(); // deviceId -> ws
 // Simple IST timestamped logger
 function ts() {
   try { return new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }); } catch (_) { return new Date().toISOString(); }
@@ -131,15 +134,12 @@ function launchPixora() {
 // Minimal event listener: react only to session_end
 app.get('/', (req, res) => {
   const event = req.query.event_type || req.query.event || '';
-  console.log(new Date().toISOString(), 'bridge event:', event);
-  log(`GET / event=${event} query=${JSON.stringify(req.query)}`);
+  const deviceId = req.query.deviceId || req.query.device_id || req.query.d || '';
+  console.log(new Date().toISOString(), 'bridge event:', event, 'deviceId:', deviceId);
+  log(`GET / event=${event} deviceId=${deviceId} query=${JSON.stringify(req.query)}`);
 
-  if (event === 'session_start') {
-    log('session_start -> launchPixora');
-    launchPixora();
-  } else if (event === 'payment_complete') {
-    log('payment_complete -> restoreDSLRBooth');
-    restoreDSLRBooth(); 
+  if (event) {
+    publishEvent(deviceId, { event_type: event, payload: { query: req.query } });
   }
   res.send('OK');
 });
@@ -153,7 +153,8 @@ app.get('/health', (req, res) => {
     time: ts(),
     platform: process.platform,
     pixoraExe: PIXORA_EXE,
-    pixoraExeExists: exists
+    pixoraExeExists: exists,
+    connectedDevices: Array.from(clients.keys())
   };
   try { log(`GET /health -> ${JSON.stringify(payload)}`); } catch (_) {}
   res.json(payload);
@@ -188,8 +189,56 @@ function restoreDSLRBooth() {
   child.on('error', (err) => { log(`restoreDSLRBooth PS error: ${err}`); });
 }
 
-app.listen(4000, () => {
-  console.log('PixoraBridge listening on https://pixora.textberry.io');
-  log('Bridge listening on https://pixora.textberry.io');
+// Hosted publish: maintain WebSocket connections per device and route events
+function publishEvent(deviceId, msg) {
+  try {
+    const payload = JSON.stringify(msg);
+    if (deviceId && clients.has(deviceId)) {
+      const ws = clients.get(deviceId);
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(payload);
+      log(`publish -> device=${deviceId} ${payload}`);
+      return;
+    }
+    // broadcast if no deviceId
+    for (const [id, ws] of clients.entries()) {
+      try { if (ws.readyState === WebSocket.OPEN) ws.send(payload); } catch (_) {}
+    }
+    log(`broadcast -> ${payload}`);
+  } catch (e) { log(`publish error: ${e}`); }
+}
+
+const server = app.listen(4000, () => {
+  console.log('PixoraBridge HTTP listening on 4000');
+  log('Bridge HTTP listening on 4000');
   try { log(`Startup resolved Pixora exe: ${PIXORA_EXE} exists=${fs.existsSync(PIXORA_EXE)}`); } catch (_) {}
+});
+
+// WebSocket server for hosted bridge
+const wss = new WebSocket.Server({ server, path: '/bridge' });
+wss.on('connection', (ws, req) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const deviceId = url.searchParams.get('deviceId') || url.searchParams.get('device_id') || url.searchParams.get('d') || '';
+    const token = url.searchParams.get('token') || '';
+    // TODO: validate token; for now, accept
+    if (!deviceId) {
+      ws.close(1008, 'deviceId required');
+      return;
+    }
+    clients.set(deviceId, ws);
+    log(`ws connect device=${deviceId} ip=${req.socket.remoteAddress}`);
+
+    ws.on('message', (data) => {
+      log(`ws message device=${deviceId} data=${data}`);
+    });
+    ws.on('close', () => {
+      log(`ws close device=${deviceId}`);
+      clients.delete(deviceId);
+    });
+    ws.on('error', (err) => {
+      log(`ws error device=${deviceId} err=${err}`);
+    });
+  } catch (e) {
+    log(`ws connection error: ${e}`);
+  }
 });

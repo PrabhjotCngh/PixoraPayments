@@ -15,9 +15,6 @@
     "welcomeVideo": "../assets/welcome_screen_saver.mp4",
     "staticQrImage": "../assets/static_qr.png"
   },
-  "cashfree": {
-    "mode": "production"
-  },
   "bridge": {
     "baseUrl": "https://pixora.textberry.io"      
   },

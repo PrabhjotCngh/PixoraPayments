@@ -3,6 +3,7 @@ const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const os = require('os');
 const fs = require('fs');
+const crypto = require('crypto');
 require('dotenv').config();
 
 // Allow autoplay with sound without user gesture (Chromium policy)
@@ -139,6 +140,28 @@ ipcMain.handle('get-cashfree-env', async () => {
   const env = (process.env.CASHFREE_ENV || '').toLowerCase();
   if (env === 'production') return 'production';
   return 'sandbox';
+});
+
+// Get Device ID for bridge routing (env or hostname)
+ipcMain.handle('get-device-id', async () => {
+  // Priority: .env DEVICE_ID -> stored file -> hostname
+  try {
+    const envId = (process.env.DEVICE_ID || '').trim();
+    if (envId) return envId;
+  } catch (_) {}
+  try {
+    const dir = app.getPath('userData');
+    const file = path.join(dir, 'device-id.txt');
+    if (fs.existsSync(file)) {
+      const v = String(fs.readFileSync(file, 'utf8')).trim();
+      if (v) return v;
+    }
+    const id = crypto.randomUUID();
+    try { fs.writeFileSync(file, id, 'utf8'); } catch (_) {}
+    return id;
+  } catch (_) {
+    try { return os.hostname(); } catch (_) { return 'unknown-device'; }
+  }
 });
 
 // Allow programmatic bring-to-front from UI or other processes

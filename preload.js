@@ -15,7 +15,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
           base = cfg.bridge.baseUrl;
         }
       } catch (_) {}
-      const url = `${base}?event_type=payment_complete`;
+      // Include deviceId for targeted routing on the hosted bridge
+      let deviceId = '';
+      try { deviceId = await ipcRenderer.invoke('get-device-id'); } catch (_) {}
+      const url = `${base}?event_type=payment_complete${deviceId ? `&deviceId=${encodeURIComponent(deviceId)}` : ''}`;
       await fetch(url);
       return { success: true };
     } catch (e) {
@@ -28,6 +31,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Get Cashfree App ID
   getCashfreeAppId: () => ipcRenderer.invoke('get-cashfree-app-id'),
+  // Get Device ID (optional external use)
+  getDeviceId: () => ipcRenderer.invoke('get-device-id'),
   // Get Cashfree ENV
   getCashfreeEnv: () => ipcRenderer.invoke('get-cashfree-env'),
   

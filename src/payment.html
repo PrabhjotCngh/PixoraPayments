@@ -44,6 +44,9 @@
     <div id="status-message" class="status-message"></div>
   </div>
 
+  <!-- Device connection badge -->
+  <div id="device-badge" class="device-badge"></div>
+
   <script>
     let qrCodeId = null;
     let paymentCheckInterval = null;
@@ -53,6 +56,12 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       config = await window.electronAPI.getConfig();
+      // Show device connection badge
+      try {
+        const id = await (window.electronAPI && window.electronAPI.getDeviceId ? window.electronAPI.getDeviceId() : Promise.resolve(''));
+        const badge = document.getElementById('device-badge');
+        if (badge && id) badge.textContent = `Connected as ${id}`;
+      } catch (_) {}
 
 
       // Read selection from localStorage (fallback to config)

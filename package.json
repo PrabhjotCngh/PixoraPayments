@@ -8,7 +8,8 @@
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "dist": "electron-builder",
-    "dev": "concurrently \"node server.js\" \"electron .\""
+    "dev": "concurrently \"node server.js\" \"electron .\"",
+    "bridge:client": "node bridge/windows-client.js"
   },
   "keywords": [
     "photobooth",
@@ -49,7 +50,8 @@
     "axios": "^1.13.2",
     "cashfree-pg": "^5.1.0",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "electron": "^39.2.6",
