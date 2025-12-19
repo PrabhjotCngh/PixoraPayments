@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
   res.send('OK');
 });
 
-app.listen( () => {
+app.listen(4000, () => {
   console.log(`PixoraBridge Logger listening on https://pixora.textberry.io`);
   console.log(`Logging to ${LOG_PATH}`);
 });

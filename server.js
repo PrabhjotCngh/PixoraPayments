@@ -212,7 +212,7 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
-app.listen( () => {
+app.listen(3000, () => {
   console.log(`Webhook server running on https://pixora.textberry.io`);
   console.log(`Health check: https://pixora.textberry.io/health`);
 });
