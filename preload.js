@@ -18,7 +18,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       // Include deviceId for targeted routing on the hosted bridge
       let deviceId = '';
       try { deviceId = await ipcRenderer.invoke('get-device-id'); } catch (_) {}
-      const url = `${base}?event_type=payment_complete${deviceId ? `&deviceId=${encodeURIComponent(deviceId)}` : ''}`;
+      const ts = Date.now();
+      const url = `${base}?event_type=payment_complete${deviceId ? `&deviceId=${encodeURIComponent(deviceId)}` : ''}&ts=${ts}&event_id=pc-${deviceId || 'unknown'}-${ts}`;
       await fetch(url);
       return { success: true };
     } catch (e) {

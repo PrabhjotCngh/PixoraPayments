@@ -150,10 +150,32 @@ function connect() {
   log(`client connecting to ${url}`);
   const ws = new WebSocket(url);
   ws.on('open', () => log('client ws open'));
+  // Client heartbeat: send ping periodically to keep proxies happy
+  const hb = setInterval(() => {
+    try { if (ws.readyState === WebSocket.OPEN) ws.ping(); } catch (_) {}
+  }, 30000);
   ws.on('message', (data) => {
     try {
       const msg = JSON.parse(data.toString());
       log(`client recv: ${data.toString()}`);
+      // Drop stale or duplicate events using event_id + created_at
+      if (!global.__seenEvents) global.__seenEvents = new Map(); // id -> ts
+      const now = Date.now();
+      const evId = msg.event_id || '';
+      const created = Number(msg.created_at || 0) || now;
+      const ttlMs = 15000;
+      if (evId) {
+        const last = global.__seenEvents.get(evId) || 0;
+        if (last && (now - last) < ttlMs) {
+          log(`client drop duplicate event_id=${evId}`);
+          return;
+        }
+        global.__seenEvents.set(evId, now);
+      }
+      if ((now - created) > ttlMs) {
+        log(`client drop stale event ageMs=${now - created}`);
+        return;
+      }
       const ev = (msg && (msg.event_type || msg.event)) || '';
       if (ev === 'session_start') launchPixora();
       else if (ev === 'payment_complete') restoreDSLRBooth();
@@ -161,7 +183,7 @@ function connect() {
       log(`client msg parse error: ${e}`);
     }
   });
-  ws.on('close', () => { log('client ws close; reconnecting in 3s'); setTimeout(connect, 3000); });
+  ws.on('close', () => { log('client ws close; reconnecting in 3s'); try { clearInterval(hb); } catch (_) {}; setTimeout(connect, 3000); });
   ws.on('error', (err) => log(`client ws error: ${err}`));
 }
 

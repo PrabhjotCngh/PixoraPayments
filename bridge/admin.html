@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pixora Bridge Admin</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; }
+    h1 { font-size: 20px; }
+    .row { margin: 8px 0; }
+    input, select, button { padding: 6px 8px; margin-right: 6px; }
+    pre { background: #f5f5f7; padding: 8px; border-radius: 6px; max-height: 200px; overflow: auto; }
+    .devices { margin-top: 10px; }
+    .badge { display: inline-block; padding: 3px 6px; background: #eef; border: 1px solid #ccd; border-radius: 4px; margin-right: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Pixora Bridge Admin</h1>
+  <div class="row">
+    <label>Admin Token (optional):</label>
+    <input id="token" type="text" placeholder="ADMIN_TOKEN" />
+    <button onclick="refreshHealth()">Refresh Health</button>
+  </div>
+  <div class="row">
+    <label>Device ID:</label>
+    <input id="deviceId" type="text" placeholder="PIXORA_001" />
+    <label>Event:</label>
+    <select id="eventType">
+      <option value="payment_complete">payment_complete</option>
+      <option value="session_start">session_start</option>
+    </select>
+    <label>Duration (ms):</label>
+    <input id="duration" type="number" value="600000" />
+    <button onclick="mute()">Mute</button>
+    <button onclick="unmute()">Unmute</button>
+    <button onclick="disconnect()">Disconnect</button>
+  </div>
+  <div class="row">
+    <label>Send Event:</label>
+    <input id="sendEventType" type="text" value="session_start" />
+    <input id="sendDeviceId" type="text" placeholder="PIXORA_001" />
+    <button onclick="sendEvent()">POST /event</button>
+  </div>
+  <div class="devices" id="devices"></div>
+  <h3>Logs</h3>
+  <pre id="logs"></pre>
+
+<script>
+function log(msg) {
+  const el = document.getElementById('logs');
+  el.textContent = `[${new Date().toLocaleString()}] ${msg}\n` + el.textContent;
+}
+
+async function refreshHealth() {
+  try {
+    const res = await fetch('/health');
+    const data = await res.json();
+    const d = (data.connectedDevices || []);
+    const wrap = document.getElementById('devices');
+    wrap.innerHTML = '<b>Connected Devices:</b> ' + (d.map(x => `<span class="badge">${x}</span>`).join(' ') || '(none)');
+    log('Health refreshed');
+  } catch (e) {
+    log('Health error: ' + e.message);
+  }
+}
+
+function headers() {
+  const t = document.getElementById('token').value.trim();
+  const h = { 'Content-Type': 'application/json' };
+  if (t) h['x-admin-token'] = t;
+  return h;
+}
+
+async function mute() {
+  const deviceId = document.getElementById('deviceId').value.trim();
+  const event_type = document.getElementById('eventType').value;
+  const duration_ms = Number(document.getElementById('duration').value || 600000);
+  if (!deviceId || !event_type) return log('Provide deviceId and event');
+  try {
+    const res = await fetch('/admin/mute', {
+      method: 'POST', headers: headers(), body: JSON.stringify({ deviceId, event_type, duration_ms })
+    });
+    log('Mute result: ' + (await res.text()));
+  } catch (e) { log('Mute error: ' + e.message); }
+}
+
+async function unmute() {
+  const deviceId = document.getElementById('deviceId').value.trim();
+  const event_type = document.getElementById('eventType').value;
+  if (!deviceId) return log('Provide deviceId');
+  try {
+    const res = await fetch('/admin/unmute', {
+      method: 'POST', headers: headers(), body: JSON.stringify({ deviceId, event_type })
+    });
+    log('Unmute result: ' + (await res.text()));
+  } catch (e) { log('Unmute error: ' + e.message); }
+}
+
+async function disconnect() {
+  const deviceId = document.getElementById('deviceId').value.trim();
+  if (!deviceId) return log('Provide deviceId');
+  try {
+    const res = await fetch('/admin/disconnect', {
+      method: 'POST', headers: headers(), body: JSON.stringify({ deviceId })
+    });
+    log('Disconnect result: ' + (await res.text()));
+    refreshHealth();
+  } catch (e) { log('Disconnect error: ' + e.message); }
+}
+
+async function sendEvent() {
+  const event_type = document.getElementById('sendEventType').value.trim();
+  const deviceId = document.getElementById('sendDeviceId').value.trim();
+  const ts = Date.now();
+  const event_id = `${event_type}:${deviceId}:${ts}`;
+  if (!event_type) return log('Provide event_type');
+  try {
+    const res = await fetch('/event', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_type, deviceId, event_id, created_at: ts, payload: { source: 'admin' } })
+    });
+    log('SendEvent result: ' + (await res.text()));
+  } catch (e) { log('SendEvent error: ' + e.message); }
+}
+
+refreshHealth();
+</script>
+</body>
+</html>
