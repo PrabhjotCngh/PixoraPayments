@@ -167,7 +167,7 @@ app.get('/', (req, res) => {
   const time = new Date().toISOString();
   console.log(time, 'Trigger:', { event_type, param1, param2 });
 
-  if (event_type === 'processing_start') {
+  if (event_type === 'session_start') {
     launchPixora();
   } else if (event_type === 'payment_complete') {
     restoreDSLRBooth();
