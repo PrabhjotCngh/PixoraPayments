@@ -76,6 +76,8 @@ const recentEvents = new Map(); // deviceId -> Map(event_id -> ts)
 // Per-device event blocks (mute) and cooldown tracking
 const deviceBlocks = new Map(); // deviceId -> Map(event_type -> untilTs)
 const lastPublished = new Map(); // `${deviceId}:${event_type}` -> ts
+// Blacklist devices (hard block)
+const deviceBlacklist = new Set();
 
 function isBlocked(deviceId, event) {
   try {
@@ -206,6 +208,10 @@ app.get('/', (req, res) => {
   log(`GET / event=${event} deviceId=${deviceId} event_id=${eventId} query=${JSON.stringify(req.query)}`);
 
   if (event) {
+    if (deviceBlacklist.has(deviceId)) {
+      log(`blacklist drop event=${event} device=${deviceId}`);
+      return res.json({ ok: true, blacklisted: true });
+    }
     // Deduplicate events per device within a short TTL
     const ttlMs = 15000; // 15s
     const byDevice = recentEvents.get(deviceId) || new Map();
@@ -251,6 +257,10 @@ app.post('/event', (req, res) => {
   const ttlMs = 15000;
   const byDevice = recentEvents.get(deviceId) || new Map();
   const lastTs = byDevice.get(eventId) || 0;
+  if (deviceBlacklist.has(deviceId)) {
+    log(`blacklist drop event=${event} device=${deviceId}`);
+    return res.json({ ok: true, blacklisted: true });
+  }
   if (lastTs && (createdAt - lastTs) < ttlMs) {
     log(`dedupe drop event_id=${eventId} device=${deviceId}`);
     return res.json({ ok: true, deduped: true });
@@ -355,6 +365,11 @@ wss.on('connection', (ws, req) => {
       ws.close(1008, 'deviceId required');
       return;
     }
+    if (deviceBlacklist.has(deviceId)) {
+      try { ws.close(4001, 'blacklisted'); } catch (_) {}
+      log(`ws reject blacklisted device=${deviceId}`);
+      return;
+    }
     clients.set(deviceId, ws);
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
@@ -424,6 +439,38 @@ app.post('/admin/disconnect', (req, res) => {
     return res.json({ ok: true, disconnected: true });
   }
   return res.json({ ok: true, disconnected: false });
+});
+
+app.post('/admin/block', (req, res) => {
+  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  const deviceId = (req.body && (req.body.deviceId || req.body.device_id)) || '';
+  if (!deviceId) return res.status(400).json({ ok: false, error: 'deviceId required' });
+  deviceBlacklist.add(deviceId);
+  const ws = clients.get(deviceId);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    try { ws.close(4001, 'blacklisted'); } catch (_) {}
+    clients.delete(deviceId);
+  }
+  log(`admin block device=${deviceId}`);
+  res.json({ ok: true, blocked: true });
+});
+
+app.post('/admin/unblock', (req, res) => {
+  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  const deviceId = (req.body && (req.body.deviceId || req.body.device_id)) || '';
+  if (!deviceId) return res.status(400).json({ ok: false, error: 'deviceId required' });
+  deviceBlacklist.delete(deviceId);
+  log(`admin unblock device=${deviceId}`);
+  res.json({ ok: true, blocked: false });
+});
+
+app.get('/admin/clients', (req, res) => {
+  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  const list = [];
+  for (const [id, ws] of clients.entries()) {
+    list.push({ deviceId: id, state: ws.readyState, connected: ws.readyState === WebSocket.OPEN });
+  }
+  res.json({ ok: true, clients: list });
 });
 
 // Admin UI (basic) for device controls

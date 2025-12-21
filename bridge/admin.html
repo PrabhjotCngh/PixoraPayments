@@ -34,6 +34,8 @@
     <button onclick="mute()">Mute</button>
     <button onclick="unmute()">Unmute</button>
     <button onclick="disconnect()">Disconnect</button>
+    <button onclick="blockDevice()" style="background:#fee;border:1px solid #f99">Block</button>
+    <button onclick="unblockDevice()" style="background:#efe;border:1px solid #9f9">Unblock</button>
   </div>
   <div class="row">
     <label>Send Event:</label>
@@ -106,6 +108,30 @@ async function disconnect() {
     log('Disconnect result: ' + (await res.text()));
     refreshHealth();
   } catch (e) { log('Disconnect error: ' + e.message); }
+}
+
+async function blockDevice() {
+  const deviceId = document.getElementById('deviceId').value.trim();
+  if (!deviceId) return log('Provide deviceId');
+  try {
+    const res = await fetch('/admin/block', {
+      method: 'POST', headers: headers(), body: JSON.stringify({ deviceId })
+    });
+    log('Block result: ' + (await res.text()));
+    refreshHealth();
+  } catch (e) { log('Block error: ' + e.message); }
+}
+
+async function unblockDevice() {
+  const deviceId = document.getElementById('deviceId').value.trim();
+  if (!deviceId) return log('Provide deviceId');
+  try {
+    const res = await fetch('/admin/unblock', {
+      method: 'POST', headers: headers(), body: JSON.stringify({ deviceId })
+    });
+    log('Unblock result: ' + (await res.text()));
+    refreshHealth();
+  } catch (e) { log('Unblock error: ' + e.message); }
 }
 
 async function sendEvent() {
