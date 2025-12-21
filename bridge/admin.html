@@ -44,6 +44,7 @@
     <button onclick="sendEvent()">POST /event</button>
   </div>
   <div class="devices" id="devices"></div>
+  <div class="devices" id="blocked"></div>
   <h3>Logs</h3>
   <pre id="logs"></pre>
 
@@ -60,6 +61,9 @@ async function refreshHealth() {
     const d = (data.connectedDevices || []);
     const wrap = document.getElementById('devices');
     wrap.innerHTML = '<b>Connected Devices:</b> ' + (d.map(x => `<span class="badge">${x}</span>`).join(' ') || '(none)');
+    const b = (data.blockedDevices || []);
+    const bwrap = document.getElementById('blocked');
+    bwrap.innerHTML = '<b>Blocked Devices:</b> ' + (b.map(x => `<span class="badge" style="background:#fee;border-color:#f99">${x}</span>`).join(' ') || '(none)');
     log('Health refreshed');
   } catch (e) {
     log('Health error: ' + e.message);

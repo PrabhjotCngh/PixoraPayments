@@ -294,7 +294,8 @@ app.get('/health', (req, res) => {
     platform: process.platform,
     pixoraExe: PIXORA_EXE,
     pixoraExeExists: exists,
-    connectedDevices: Array.from(clients.keys())
+    connectedDevices: Array.from(clients.keys()),
+    blockedDevices: Array.from(deviceBlacklist)
   };
   try { log(`GET /health -> ${JSON.stringify(payload)}`); } catch (_) {}
   res.json(payload);
