@@ -1,6 +1,18 @@
 const express = require('express');
 const { spawn } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
+
+// Logger with IST timestamps
+function ts() {
+  try { return new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }); } catch (_) { return new Date().toISOString(); }
+}
+
+function log(msg) {
+  try { fs.appendFileSync('bridge-debug.log', `${ts()} ${msg}\n`); } catch (_) {}
+  console.log(msg);
+}
 
 // Resolve PixoraPayments.exe dynamically across machines
 function sanitize(p) {
