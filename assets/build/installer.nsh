@@ -7,21 +7,16 @@
   nsExec::ExecToLog 'taskkill /IM "PixoraPayments.exe" /T /F'
   nsExec::ExecToLog 'taskkill /IM "PixoraBridgeClient.exe" /T /F'
   Sleep 500
-!macroend
 
-!macro customInstall
-  ; Prompt for Device ID only if not already set
+  ; Collect or edit Device ID before wizard pages to avoid disabled buttons
   StrCpy $0 "$APPDATA\PixoraPayments\device-id.txt"
-  ; Read existing if present
   ClearErrors
   FileOpen $1 "$0" r
   IfErrors +3
   FileRead $1 $R0
   FileClose $1
-  ; Keep a copy of any existing Device ID
   StrCpy $R5 $R0
 
-  ; Always show dialog with current (if any) Device ID prefilled and editable
   nsDialogs::Create 1018
   Pop $2
   ${NSD_CreateLabel} 0 0 100% 12u "Device ID (editable):"
@@ -31,17 +26,19 @@
   ${NSD_SetText} $R1 "$R5"
   nsDialogs::Show
   ${NSD_GetText} $R1 $R0
-  ; If left blank but we had an existing ID, keep the existing value
+  ; Keep existing if left blank
   StrCmp $R0 "" 0 +2
     StrCmp $R5 "" +3 0
       StrCpy $R0 $R5
-  ; Write if we have a non-empty value
+  ; Persist value if non-empty
   StrCmp $R0 "" +4 0
     CreateDirectory "$APPDATA\PixoraPayments"
     FileOpen $4 "$APPDATA\PixoraPayments\device-id.txt" w
     FileWrite $4 "$R0"
     FileClose $4
+!macroend
 
+!macro customInstall
   ; Create scheduled task to run at system startup
   ; Requires schtasks.exe (available on Windows Vista+)
   ; /RL HIGHEST runs with highest privileges; adjust if needed
