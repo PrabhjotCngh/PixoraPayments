@@ -314,6 +314,19 @@ function connect() {
         state.lastPaidAt = Date.now();
         writeState(state);
         restoreDSLRBooth();
+      } else if (ev === 'reset_credit') {
+        // Admin-triggered credit reset
+        state.hasCredit = false;
+        state.creditPendingSession = false;
+        state.lastPaidAt = 0;
+        state.currentSession = null;
+        writeState(state);
+        log('client: credit reset by admin');
+      } else if (ev === 'force_payment') {
+        // Admin-triggered immediate payment launch (ignores credit)
+        state.creditPendingSession = false;
+        writeState(state);
+        launchPixora();
       }
     } catch (e) {
       log(`client msg parse error: ${e}`);

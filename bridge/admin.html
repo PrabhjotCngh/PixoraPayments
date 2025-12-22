@@ -42,6 +42,8 @@
     <input id="sendEventType" type="text" value="session_start" />
     <input id="sendDeviceId" type="text" placeholder="PIXORA_001" />
     <button onclick="sendEvent()">POST /event</button>
+    <button onclick="resetCredit()" style="margin-left:8px">Reset Credit</button>
+    <button onclick="launchPayment()" style="margin-left:4px">Launch Payment</button>
   </div>
   <div class="devices" id="devices"></div>
   <div class="devices" id="blocked"></div>
@@ -151,6 +153,24 @@ async function sendEvent() {
     });
     log('SendEvent result: ' + (await res.text()));
   } catch (e) { log('SendEvent error: ' + e.message); }
+}
+
+async function resetCredit() {
+  const deviceId = document.getElementById('sendDeviceId').value.trim() || document.getElementById('deviceId').value.trim();
+  if (!deviceId) return log('Provide deviceId to reset credit');
+  try {
+    const res = await fetch('/admin/reset_credit', { method: 'POST', headers: headers(), body: JSON.stringify({ deviceId }) });
+    log('ResetCredit result: ' + (await res.text()));
+  } catch (e) { log('ResetCredit error: ' + e.message); }
+}
+
+async function launchPayment() {
+  const deviceId = document.getElementById('sendDeviceId').value.trim() || document.getElementById('deviceId').value.trim();
+  if (!deviceId) return log('Provide deviceId to launch payment');
+  try {
+    const res = await fetch('/admin/launch_payment', { method: 'POST', headers: headers(), body: JSON.stringify({ deviceId }) });
+    log('LaunchPayment result: ' + (await res.text()));
+  } catch (e) { log('LaunchPayment error: ' + e.message); }
 }
 
 refreshHealth();

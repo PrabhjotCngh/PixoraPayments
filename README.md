@@ -49,6 +49,12 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
   - On `session_start` with valid credit, payment app launch is skipped and credit is marked pending.
   - If the session progresses to a milestone (as above), the pending credit is consumed for that session.
   - If the session ends without reaching a milestone, the credit is preserved for the next session.
+
+### Admin Controls: Reset Credit & Launch Payment
+
+- Reset Credit: POST `/admin/reset_credit` with `{ deviceId }` publishes a `reset_credit` control event to the client, clearing any stored credit and session state.
+- Launch Payment: POST `/admin/launch_payment` with `{ deviceId }` publishes a `force_payment` control event to immediately launch the Pixora payment app on that device (ignores credit).
+- The admin UI exposes "Reset Credit" and "Launch Payment" buttons wired to these endpoints.
     - On success: notifies bridge (`notifyPaymentComplete`) and quits Pixora.
   - Static mode:
     - Renders `assets.staticQrImage` and shows a highlight message.

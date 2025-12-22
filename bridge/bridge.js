@@ -478,3 +478,27 @@ app.get('/admin/clients', (req, res) => {
 app.get('/admin', basicAuth, (req, res) => {
   try { res.sendFile(path.join(__dirname, 'admin.html')); } catch (e) { res.status(500).send('admin page unavailable'); }
 });
+
+// Reset credit on a client device by publishing a control event
+app.post('/admin/reset_credit', (req, res) => {
+  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  const deviceId = (req.body && (req.body.deviceId || req.body.device_id)) || '';
+  if (!deviceId) return res.status(400).json({ ok: false, error: 'deviceId required' });
+  const tsNow = Date.now();
+  const event_id = `reset_credit:${deviceId}:${tsNow}`;
+  publishEvent(deviceId, { event_type: 'reset_credit', event_id, created_at: tsNow, payload: { source: 'admin' } });
+  log(`admin reset_credit device=${deviceId}`);
+  res.json({ ok: true, published: true });
+});
+
+// Force launch the payment app on a device (ignores credit)
+app.post('/admin/launch_payment', (req, res) => {
+  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  const deviceId = (req.body && (req.body.deviceId || req.body.device_id)) || '';
+  if (!deviceId) return res.status(400).json({ ok: false, error: 'deviceId required' });
+  const tsNow = Date.now();
+  const event_id = `force_payment:${deviceId}:${tsNow}`;
+  publishEvent(deviceId, { event_type: 'force_payment', event_id, created_at: tsNow, payload: { source: 'admin' } });
+  log(`admin force_payment device=${deviceId}`);
+  res.json({ ok: true, published: true });
+});
