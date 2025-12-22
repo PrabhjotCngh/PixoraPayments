@@ -31,6 +31,24 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
     - Creates order via backend and renders Cashfree UPI QR.
     - Cashfree UI SDK mode is driven by `.env` `CASHFREE_ENV` (`sandbox`|`production`).
     - Polls status at the configured interval (`screens.paymentStatusPollMs`). Treats as success only if `paid` and the amount matches the initially selected amount.
+
+### Paid Credit + DSLRBooth Event Sequence
+
+- Windows client persists a "paid credit" after `payment_complete` to avoid re-paying when a session is aborted early or events arrive out of order.
+- Credit TTL: default 30 minutes (1800s). Configure via environment `PIXORA_CREDIT_TTL_SEC`.
+  - Example setup on Windows:
+    - User-level: `setx PIXORA_CREDIT_TTL_SEC 1800`
+    - .env file: `PIXORA_CREDIT_TTL_SEC=1800`
+- State machine enforces ordered progression before consuming credit:
+  - Expected order (simplified): `session_start → countdown_start/countdown → capture_start → file_download → processing_start → sharing_screen/printing/file_upload → session_end`.
+  - The client only consumes credit at milestones reached via valid transitions:
+    - Entering `capturing` (`capture_start`) from `started` or `countdown`.
+    - Entering `processing` (`processing_start`) from `capturing` or `downloading`.
+  - Out-of-order events do not advance the state or consume credit.
+- Behavior:
+  - On `session_start` with valid credit, payment app launch is skipped and credit is marked pending.
+  - If the session progresses to a milestone (as above), the pending credit is consumed for that session.
+  - If the session ends without reaching a milestone, the credit is preserved for the next session.
     - On success: notifies bridge (`notifyPaymentComplete`) and quits Pixora.
   - Static mode:
     - Renders `assets.staticQrImage` and shows a highlight message.
