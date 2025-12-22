@@ -208,7 +208,19 @@ app.post('/webhook', (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'running', timestamp: new Date().toISOString() });
+  const environment = process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox';
+  const apiBase = environment === 'production'
+    ? 'https://api.cashfree.com/pg/orders'
+    : 'https://sandbox.cashfree.com/pg/orders';
+  res.json({
+    status: 'running',
+    environment,
+    apiBase,
+    appIdPresent: Boolean(process.env.CASHFREE_APP_ID),
+    secretPresent: Boolean(process.env.CASHFREE_SECRET_KEY),
+    apiVersion: process.env.CASHFREE_API_VERSION || '2025-01-01',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Start server

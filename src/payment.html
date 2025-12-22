@@ -161,8 +161,8 @@
           const upiQr = cashfree.create('upiQr', {
             values: {
               size: '280px',
-              // Pass payment session if SDK supports it; kept for forward compatibility
-              payment_session_id: payment_session_id
+              // Cashfree UI expects camelCase paymentSessionId
+              paymentSessionId: payment_session_id
             }
           });
 
