@@ -1,13 +1,13 @@
 {
   "payment": {
     "amountInRupees": 200,
-    "qrCodeExpiryMinutes": 2,
+    "qrCodeExpiryMinutes": 5,
     "usePaymentGateway": true
   },
   "screens": {
     "successDuration": 3000,
     "failureDuration": 3000,
-    "qrCodeRefreshInterval": 3000
+    "paymentStatusPollMs": 3000
   },
   "assets": {
     "background": "./assets/background.png",

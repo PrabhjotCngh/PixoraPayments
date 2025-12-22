@@ -36,10 +36,8 @@
     
     
     <div class="timer-container">
-      <p>QR Code expires in: <span id="timer" class="timer">2:00</span></p>
+      <p>QR Code expires in: <span id="timer" class="timer">5:00</span></p>
     </div>
-    
-    <button id="cancel-btn" class="btn btn-secondary">Cancel</button>
 
     <div id="status-message" class="status-message"></div>
   </div>
@@ -53,9 +51,17 @@
     let config = null;
     let expiryTime = null;
     let timerInterval = null;
+    let useGateway = true;
+    let lastAmountInRupees = null;
+    let lastPhotoCount = null;
+    let expirySeconds = 300;
 
     window.addEventListener('DOMContentLoaded', async () => {
       config = await window.electronAPI.getConfig();
+      // Resolve expiry from config: minutes * 60 (fallback to 300)
+      expirySeconds = ((config && config.payment && Number(config.payment.qrCodeExpiryMinutes))
+        ? Number(config.payment.qrCodeExpiryMinutes) * 60
+        : 300);
       // Show device connection badge
       try {
         const id = await (window.electronAPI && window.electronAPI.getDeviceId ? window.electronAPI.getDeviceId() : Promise.resolve(''));
@@ -69,61 +75,27 @@
       const selectedCount = parseInt(localStorage.getItem('orderCount') || '', 10);
       const amountInRupees = Number.isFinite(selectedAmount) ? selectedAmount : config.payment.amountInRupees;
       const photoCount = Number.isFinite(selectedCount) ? selectedCount : 2;
+      lastAmountInRupees = amountInRupees;
+      lastPhotoCount = photoCount;
 
       // Display amount and description
       document.getElementById('amount').textContent = amountInRupees;
       const infoEl = document.querySelector('.payment-info');
       if (infoEl) infoEl.textContent = `for ${photoCount} ${photoCount === 2 ? 'strip copies' : 'photos'}`;
+      const timerEl = document.getElementById('timer');
+      if (timerEl) timerEl.textContent = `${Math.floor(expirySeconds / 60)}:00`;
 
       // Static QR mode toggle
-      const useGateway = !(config && config.payment && config.payment.usePaymentGateway === false);
+      useGateway = !(config && config.payment && config.payment.usePaymentGateway === false);
 
       if (useGateway) {
         // Generate dynamic QR via Cashfree and start polling
         await generateQRCode(amountInRupees, photoCount);
         startPaymentCheck();
-        startExpiryTimer(config.payment.qrCodeExpiryMinutes * 60);
+        startExpiryTimer(expirySeconds);
       } else {
-        // Render static QR image and enable tap-to-continue
-        const wrapperEl = document.getElementById('qr-code-wrapper');
-        const qrMountEl = document.getElementById('upi-qr');
-        if (qrMountEl) qrMountEl.innerHTML = '';
-        const staticPath = (config.assets && config.assets.staticQrImage) || '../assets/static_qr.png';
-        const img = document.createElement('img');
-        img.src = staticPath;
-        img.alt = 'Static UPI QR';
-        img.className = 'qr-image';
-        img.onload = () => { if (wrapperEl) wrapperEl.classList.remove('loading'); };
-        img.onerror = () => { if (wrapperEl) wrapperEl.classList.remove('loading'); };
-        qrMountEl.appendChild(img);
-
-        const msg = document.getElementById('highlight-message');
-        if (msg) {
-          msg.textContent = 'Once payment is done, tap anywhere to continue';
-          msg.style.display = 'block';
-        }
-
-        let tapped = false;
-        const tapHandler = async () => {
-          if (tapped) return;
-          tapped = true;
-            try { await window.electronAPI.notifyPaymentComplete(); } catch (_) {}
-          try { await window.electronAPI.quitApp(); } catch (_) {}
-        };
-        document.body.addEventListener('click', tapHandler);
-        document.body.addEventListener('touchstart', tapHandler);
-
-        startExpiryTimer(config.payment.qrCodeExpiryMinutes * 60);
-      }
-      
-      // Cancel button -> launch DSLR app
-      const cancelBtn = document.getElementById('cancel-btn');
-      if (cancelBtn) {
-        cancelBtn.addEventListener('click', async () => {
-          cleanup();
-            try { await window.electronAPI.notifyPaymentComplete(); } catch (_) {}
-          try { await window.electronAPI.quitApp(); } catch (_) {}
-        });
+        renderStaticQR();
+        startExpiryTimer(expirySeconds);
       }
     });
 
@@ -200,7 +172,7 @@
     }
 
     function startPaymentCheck() {
-      const pollMs = (config && config.screens && Number(config.screens.qrCodeRefreshInterval)) || 2000;
+      const pollMs = (config && config.screens && Number(config.screens.paymentStatusPollMs)) || 2000;
       paymentCheckInterval = setInterval(async () => {
         if (!qrCodeId) return;
         
@@ -235,15 +207,68 @@
         const minutes = Math.floor(remaining / 60000);
         const secs = Math.floor((remaining % 60000) / 1000);
         
-        document.getElementById('timer').textContent = 
-          `${minutes}:${secs.toString().padStart(2, '0')}`;
+        const timerEl = document.getElementById('timer');
+        if (timerEl) timerEl.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
         
         if (remaining <= 0) {
-          cleanup();
-          // Expired -> show failure screen
-          window.location.href = 'failure.html?reason=expired';
+          onTimerExpired();
         }
       }, 1000);
+    }
+
+    async function onTimerExpired() {
+      cleanup();
+      // Reset the payment page by regenerating QR and restarting checks
+      try {
+        const wrapperEl = document.getElementById('qr-code-wrapper');
+        const qrMountEl = document.getElementById('upi-qr');
+        if (wrapperEl) wrapperEl.classList.add('loading');
+        if (qrMountEl) qrMountEl.innerHTML = '';
+
+        if (useGateway) {
+          await generateQRCode(lastAmountInRupees, lastPhotoCount);
+          startPaymentCheck();
+        } else {
+          renderStaticQR();
+        }
+
+        startExpiryTimer(expirySeconds);
+      } catch (e) {
+        console.error('Error resetting payment flow:', e);
+        showError('Unable to refresh QR. Retrying...');
+        // Attempt another refresh after a short delay
+        setTimeout(() => startExpiryTimer(expirySeconds), 3000);
+      }
+    }
+
+    function renderStaticQR() {
+      const wrapperEl = document.getElementById('qr-code-wrapper');
+      const qrMountEl = document.getElementById('upi-qr');
+      if (qrMountEl) qrMountEl.innerHTML = '';
+      const staticPath = (config && config.assets && config.assets.staticQrImage) || '../assets/static_qr.png';
+      const img = document.createElement('img');
+      img.src = staticPath;
+      img.alt = 'Static UPI QR';
+      img.className = 'qr-image';
+      img.onload = () => { if (wrapperEl) wrapperEl.classList.remove('loading'); };
+      img.onerror = () => { if (wrapperEl) wrapperEl.classList.remove('loading'); };
+      qrMountEl.appendChild(img);
+
+      const msg = document.getElementById('highlight-message');
+      if (msg) {
+        msg.textContent = 'Once payment is done, tap anywhere to continue';
+        msg.style.display = 'block';
+      }
+
+      let tapped = false;
+      const tapHandler = async () => {
+        if (tapped) return;
+        tapped = true;
+          try { await window.electronAPI.notifyPaymentComplete(); } catch (_) {}
+        try { await window.electronAPI.quitApp(); } catch (_) {}
+      };
+      document.body.addEventListener('click', tapHandler);
+      document.body.addEventListener('touchstart', tapHandler);
     }
 
     function cleanup() {

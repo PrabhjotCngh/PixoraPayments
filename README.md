@@ -30,7 +30,7 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
   - Gateway mode:
     - Creates order via backend and renders Cashfree UPI QR.
     - Cashfree UI SDK mode is driven by `.env` `CASHFREE_ENV` (`sandbox`|`production`).
-    - Polls status at the configured interval (`screens.qrCodeRefreshInterval`). Treats as success only if `paid` and the amount matches the initially selected amount.
+    - Polls status at the configured interval (`screens.paymentStatusPollMs`). Treats as success only if `paid` and the amount matches the initially selected amount.
     - On success: notifies bridge (`notifyPaymentComplete`) and quits Pixora.
   - Static mode:
     - Renders `assets.staticQrImage` and shows a highlight message.
