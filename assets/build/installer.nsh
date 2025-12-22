@@ -42,19 +42,13 @@
 !macroend
 
 !macro customUnInstall
-  ; Uninstall options dialog: allow removing device configuration
-  nsDialogs::Create 1018
-  Pop $2
-  ${NSD_CreateLabel} 0 0 100% 12u "Uninstall options:"
-  Pop $3
-  ${NSD_CreateCheckbox} 0 14u 100% 12u "Also remove device configuration (Device ID)"
-  Pop $R0
-  nsDialogs::Show
-  ${NSD_GetState} $R0 $R1
-  StrCmp $R1 1 0 +4
+  ; Ask user whether to remove device configuration using a simple prompt
+  MessageBox MB_YESNO|MB_ICONQUESTION "Also remove device configuration (Device ID)?" IDYES +3 IDNO +6
     Delete "$APPDATA\PixoraPayments\device-id.txt"
     ; Attempt to remove directory if now empty (ignored if not empty)
     RMDir "$APPDATA\PixoraPayments"
+    Goto +3
+  ; No selected, do nothing
 
   ; Remove scheduled task on uninstall
   nsExec::ExecToLog 'schtasks /Delete /TN "PixoraBridgeClient" /F'
