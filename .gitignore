@@ -7,6 +7,10 @@ dist/
 build/
 out/
 
+# App user data / accidental commits
+PixoraPayments/
+**/device-id.txt
+
 # Environment variables
 .env
 .env.local
