@@ -52,9 +52,6 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 
 ### Admin Controls: Reset Credit & Launch Payment
 
-- Reset Credit: POST `/admin/reset_credit` with `{ deviceId }` publishes a `reset_credit` control event to the client, clearing any stored credit and session state.
-- Launch Payment: POST `/admin/launch_payment` with `{ deviceId }` publishes a `force_payment` control event to immediately launch the Pixora payment app on that device (ignores credit).
-- The admin UI exposes "Reset Credit" and "Launch Payment" buttons wired to these endpoints.
     - On success: notifies bridge (`notifyPaymentComplete`) and quits Pixora.
   - Static mode:
     - Renders `assets.staticQrImage` and shows a highlight message.
@@ -62,6 +59,18 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
   - Cancel button: notifies bridge and quits Pixora.
   - Expiry timer: redirects to failure with `?reason=expired`.
 
+
+### Admin Control: Set Device ID
+
+- Rename a device remotely: POST `/admin/set_device_id` with `{ deviceId, newId }`.
+- The Windows client updates `%APPDATA%/PixoraPayments/device-id.txt`, applies the new ID, and reconnects.
+- Use stable, unique IDs per booth (e.g., `rest-kolkata-booth-01`). Avoid spaces and special characters.
+
+### Installer Prompt: Configure Device ID (Windows)
+
+- During installation, the setup prompts for a Device ID if none is already configured.
+- The value is stored at `%APPDATA%/PixoraPayments/device-id.txt` and reused on subsequent installs, so you are not prompted again.
+- You can also set or change the Device ID later via the Admin page (Set Device ID) or by editing the file directly.
 - `success.html`
   - Shows a short countdown then notifies bridge and quits Pixora.
 

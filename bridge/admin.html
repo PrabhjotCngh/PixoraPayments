@@ -45,6 +45,12 @@
     <button onclick="resetCredit()" style="margin-left:8px">Reset Credit</button>
     <button onclick="launchPayment()" style="margin-left:4px">Launch Payment</button>
   </div>
+  <div class="row">
+    <label>Rename Device ID:</label>
+    <input id="renameCurrentId" type="text" placeholder="current-id" />
+    <input id="renameNewId" type="text" placeholder="new-id" />
+    <button onclick="renameDeviceId()">Set Device ID</button>
+  </div>
   <div class="devices" id="devices"></div>
   <div class="devices" id="blocked"></div>
   <h3>Logs</h3>
@@ -171,6 +177,16 @@ async function launchPayment() {
     const res = await fetch('/admin/launch_payment', { method: 'POST', headers: headers(), body: JSON.stringify({ deviceId }) });
     log('LaunchPayment result: ' + (await res.text()));
   } catch (e) { log('LaunchPayment error: ' + e.message); }
+}
+
+async function renameDeviceId() {
+  const currentId = document.getElementById('renameCurrentId').value.trim() || document.getElementById('deviceId').value.trim();
+  const newId = document.getElementById('renameNewId').value.trim();
+  if (!currentId || !newId) return log('Provide currentId and newId');
+  try {
+    const res = await fetch('/admin/set_device_id', { method: 'POST', headers: headers(), body: JSON.stringify({ deviceId: currentId, newId }) });
+    log('SetDeviceId result: ' + (await res.text()));
+  } catch (e) { log('SetDeviceId error: ' + e.message); }
 }
 
 refreshHealth();

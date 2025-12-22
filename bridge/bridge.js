@@ -479,6 +479,19 @@ app.get('/admin', basicAuth, (req, res) => {
   try { res.sendFile(path.join(__dirname, 'admin.html')); } catch (e) { res.status(500).send('admin page unavailable'); }
 });
 
+// Set (rename) device ID remotely by publishing control event with newId
+app.post('/admin/set_device_id', (req, res) => {
+  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  const currentId = (req.body && (req.body.deviceId || req.body.device_id)) || '';
+  const newId = (req.body && (req.body.newId || req.body.new_device_id)) || '';
+  if (!currentId || !newId) return res.status(400).json({ ok: false, error: 'deviceId and newId required' });
+  const tsNow = Date.now();
+  const event_id = `set_device_id:${currentId}:${tsNow}`;
+  publishEvent(currentId, { event_type: 'set_device_id', event_id, created_at: tsNow, payload: { source: 'admin', newId } });
+  log(`admin set_device_id from=${currentId} to=${newId}`);
+  res.json({ ok: true, published: true });
+});
+
 // Reset credit on a client device by publishing a control event
 app.post('/admin/reset_credit', (req, res) => {
   if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });

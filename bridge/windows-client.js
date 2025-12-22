@@ -236,12 +236,24 @@ function getOrCreateDeviceId() {
     try { return require('os').hostname(); } catch (_) { return 'unknown-device'; }
   }
 }
-const DEVICE_ID = getOrCreateDeviceId();
+let DEVICE_ID = getOrCreateDeviceId();
+function setDeviceId(newId) {
+  try {
+    const base = process.env.APPDATA || process.env.LOCALAPPDATA || process.cwd();
+    const dir = path.join(base, 'PixoraPayments');
+    try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+    const file = path.join(dir, 'device-id.txt');
+    fs.writeFileSync(file, String(newId || '').trim(), 'utf8');
+    DEVICE_ID = String(newId || '').trim();
+    log(`client: device id updated to ${DEVICE_ID}`);
+  } catch (e) { log(`client: device id update error: ${e}`); }
+}
 
 function connect() {
   const url = `${BRIDGE_SERVER_URL}?deviceId=${encodeURIComponent(DEVICE_ID)}${DEVICE_TOKEN ? `&token=${encodeURIComponent(DEVICE_TOKEN)}` : ''}`;
   log(`client connecting to ${url}`);
   const ws = new WebSocket(url);
+  global.__ws = ws;
   ws.on('open', () => log('client ws open'));
   // Client heartbeat: send ping periodically to keep proxies happy
   const hb = setInterval(() => {
@@ -327,6 +339,16 @@ function connect() {
         state.creditPendingSession = false;
         writeState(state);
         launchPixora();
+      } else if (ev === 'set_device_id') {
+        try {
+          const newId = String((msg && msg.payload && msg.payload.newId) || '').trim();
+          if (newId) {
+            setDeviceId(newId);
+            try { if (global.__ws && global.__ws.readyState === WebSocket.OPEN) global.__ws.close(4100, 'device id change'); } catch (_) {}
+            // connect() will run again from close handler; if not, trigger a reconnect
+            setTimeout(() => { try { if (!global.__ws || global.__ws.readyState !== WebSocket.OPEN) connect(); } catch (_) {} }, 1000);
+          }
+        } catch (e) { log(`client: set_device_id handling error: ${e}`); }
       }
     } catch (e) {
       log(`client msg parse error: ${e}`);
