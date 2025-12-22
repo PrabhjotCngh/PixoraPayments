@@ -36,6 +36,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDeviceId: () => ipcRenderer.invoke('get-device-id'),
   // Get Cashfree ENV
   getCashfreeEnv: () => ipcRenderer.invoke('get-cashfree-env'),
+  // Set Device ID
+  setDeviceId: (newId) => ipcRenderer.invoke('set-device-id', newId),
   
   // Payment APIs
   createQRCode: (amount, description) => {

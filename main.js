@@ -164,6 +164,20 @@ ipcMain.handle('get-device-id', async () => {
   }
 });
 
+// Set/Persist Device ID (editable from renderer)
+ipcMain.handle('set-device-id', async (_event, newIdRaw) => {
+  try {
+    const newId = String(newIdRaw || '').trim();
+    if (!newId) return { success: false, error: 'empty_device_id' };
+    const dir = app.getPath('userData');
+    const file = path.join(dir, 'device-id.txt');
+    fs.writeFileSync(file, newId, 'utf8');
+    return { success: true, deviceId: newId };
+  } catch (e) {
+    return { success: false, error: e?.message || 'write_failed' };
+  }
+});
+
 // Allow programmatic bring-to-front from UI or other processes
 ipcMain.handle('bring-to-front', async () => {
   if (!mainWindow) return { success: false, error: 'no window' };

@@ -45,6 +45,20 @@
   <!-- Device connection badge -->
   <div id="device-badge" class="device-badge"></div>
 
+  <!-- Device ID first-run modal -->
+  <div id="deviceIdModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; color:#222; width:520px; max-width:90%; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.35); padding:22px 22px 16px;">
+      <div style="font-size:18px; font-weight:700; margin-bottom:10px;">Device ID</div>
+      <div style="font-size:12px; color:#666; margin-bottom:10px;">Shown below and editable. Leave empty to keep current value.</div>
+      <input id="deviceIdInput" type="text" style="width:100%; padding:10px 12px; font-size:14px; border:1px solid #ddd; border-radius:8px; outline:none;" />
+      <div id="deviceIdError" style="display:none; color:#c0392b; font-size:12px; margin-top:8px;">Please enter a valid Device ID.</div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button id="deviceIdSkip" class="btn btn-secondary" style="padding:10px 18px; font-size:14px;">Skip</button>
+        <button id="deviceIdSave" class="btn btn-primary" style="padding:10px 18px; font-size:14px;">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let qrCodeId = null;
     let paymentCheckInterval = null;
@@ -67,6 +81,13 @@
         const id = await (window.electronAPI && window.electronAPI.getDeviceId ? window.electronAPI.getDeviceId() : Promise.resolve(''));
         const badge = document.getElementById('device-badge');
         if (badge && id) badge.textContent = `Connected as ${id}`;
+        // First-run modal logic: show once (or when id changes)
+        try {
+          const acknowledgedFor = localStorage.getItem('deviceIdAcknowledgedFor') || '';
+          if (!acknowledgedFor || acknowledgedFor !== id) {
+            showDeviceIdModal(id);
+          }
+        } catch (_) {}
       } catch (_) {}
 
 
@@ -97,6 +118,17 @@
         renderStaticQR();
         startExpiryTimer(expirySeconds);
       }
+
+      // Admin hotkey: Ctrl+Shift+D to edit Device ID anytime
+      window.addEventListener('keydown', async (e) => {
+        try {
+          if (e.ctrlKey && e.shiftKey && (e.code === 'KeyD' || e.key.toLowerCase() === 'd')) {
+            e.preventDefault();
+            const id = await (window.electronAPI && window.electronAPI.getDeviceId ? window.electronAPI.getDeviceId() : Promise.resolve(''));
+            showDeviceIdModal(id);
+          }
+        } catch (_) {}
+      });
     });
 
     async function generateQRCode(amountInRupees, photoCount) {
@@ -281,6 +313,47 @@
       statusEl.textContent = message;
       statusEl.style.display = 'block';
       statusEl.classList.add('error');
+    }
+  </script>
+  <script>
+    function showDeviceIdModal(currentId) {
+      const modal = document.getElementById('deviceIdModal');
+      const input = document.getElementById('deviceIdInput');
+      const err = document.getElementById('deviceIdError');
+      if (!modal || !input) return;
+      input.value = currentId || '';
+      err.style.display = 'none';
+      modal.style.display = 'flex';
+
+      const close = (updatedId) => {
+        try { if (updatedId) localStorage.setItem('deviceIdAcknowledgedFor', updatedId); } catch (_) {}
+        modal.style.display = 'none';
+        // Update badge
+        const badge = document.getElementById('device-badge');
+        if (badge && updatedId) badge.textContent = `Connected as ${updatedId}`;
+      };
+
+      document.getElementById('deviceIdSkip').onclick = () => {
+        close(currentId || input.value.trim());
+      };
+      document.getElementById('deviceIdSave').onclick = async () => {
+        const v = (input.value || '').trim();
+        if (!v) {
+          // Keep existing if blank
+          close(currentId);
+          return;
+        }
+        try {
+          const res = await (window.electronAPI && window.electronAPI.setDeviceId ? window.electronAPI.setDeviceId(v) : Promise.resolve({ success:false }));
+          if (res && res.success) {
+            close(res.deviceId || v);
+          } else {
+            err.style.display = 'block';
+          }
+        } catch (_) {
+          err.style.display = 'block';
+        }
+      };
     }
   </script>
 </body>

@@ -87,6 +87,7 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 - `getConfig()`: read `config.json`.
 - `getCashfreeAppId()`: read Cashfree APP ID from env.
 - `getDeviceId()`: returns the stable per-machine device identifier used by the hosted bridge. Priority: `.env` `DEVICE_ID` → persisted file → hostname. The app auto-creates and persists a random UUID at `%APPDATA%/../Roaming/<AppData>/PixoraPayments/device-id.txt` (Electron `userData`) if none exists.
+- `setDeviceId(newId)`: validates and persists the Device ID to the Electron `userData` path (e.g., `%APPDATA%/PixoraPayments/device-id.txt`), returning `{ success, deviceId }`.
 - `getCashfreeEnv()`: read `CASHFREE_ENV` from `.env` (`sandbox`|`production`).
 - `createQRCode(amount, description)`: backend call to create order.
 - `checkPayment(orderId)`: backend call to check payment status.
@@ -170,6 +171,12 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 - Bridge visibility:
   - `GET /health` on the hosted bridge returns `connectedDevices` (array of currently connected device IDs) along with environment details.
   - Events received via `GET /?event_type=...&deviceId=...` are routed to that specific device; if `deviceId` is omitted they are broadcast.
+
+### Admin Hotkey (in-app)
+
+- On the payment screen, press `Ctrl+Shift+D` to open a modal showing the current Device ID with the option to edit and save.
+- Save writes to `%APPDATA%/PixoraPayments/device-id.txt` and updates the on-screen badge.
+- The modal also shows automatically on first run for a new Device ID. Clear `localStorage.deviceIdAcknowledgedFor` to see it again.
 
 ## Packaging (Windows)
 
