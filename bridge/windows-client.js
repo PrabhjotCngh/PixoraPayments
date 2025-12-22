@@ -123,9 +123,8 @@ function advanceSessionFsm(state, ev) {
   const next = eventToState[ev] || cur;
   sess.fsm = next;
   sess.lastEvent = ev;
-  // Milestones that indicate real progress: entering capturing or processing from valid prior states
-  if ((ev === 'capture_start' && (cur === 'countdown' || cur === 'started')) ||
-      (ev === 'processing_start' && (cur === 'capturing' || cur === 'downloading'))) {
+  // Completion milestone: only mark progressed at printing
+  if ((ev === 'printing' && (cur === 'processing' || cur === 'sharing' || cur === 'downloading'))) {
     sess.progressed = true;
   }
   state.currentSession = sess;
@@ -306,7 +305,7 @@ function connect() {
             state.hasCredit = false;
             state.creditPendingSession = false;
             writeState(state);
-            log('client: consumed paid credit on valid sequence milestone');
+            log('client: consumed paid credit on completion milestone');
           } else {
             writeState(state);
           }
