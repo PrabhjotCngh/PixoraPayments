@@ -11,21 +11,29 @@
   IfErrors +3
   FileRead $1 $R0
   FileClose $1
-  ; If empty, prompt
-  StrCmp $R0 "" 0 +10
-    nsDialogs::Create 1018
-    Pop $2
-    ${NSD_CreateLabel} 0 0 100% 12u "Enter Device ID (e.g., social-hauz-khas-booth):"
-    Pop $3
-    ${NSD_CreateText} 0 14u 100% 12u ""
-    Pop $R1
-    nsDialogs::Show
-    ${NSD_GetText} $R1 $R0
-    StrCmp $R0 "" +3 0
-      CreateDirectory "$APPDATA\PixoraPayments"
-      FileOpen $4 "$APPDATA\PixoraPayments\device-id.txt" w
-      FileWrite $4 "$R0"
-      FileClose $4
+  ; Keep a copy of any existing Device ID
+  StrCpy $R5 $R0
+
+  ; Always show dialog with current (if any) Device ID prefilled and editable
+  nsDialogs::Create 1018
+  Pop $2
+  ${NSD_CreateLabel} 0 0 100% 12u "Device ID (editable):"
+  Pop $3
+  ${NSD_CreateText} 0 14u 100% 12u ""
+  Pop $R1
+  ${NSD_SetText} $R1 "$R5"
+  nsDialogs::Show
+  ${NSD_GetText} $R1 $R0
+  ; If left blank but we had an existing ID, keep the existing value
+  StrCmp $R0 "" 0 +2
+    StrCmp $R5 "" +3 0
+      StrCpy $R0 $R5
+  ; Write if we have a non-empty value
+  StrCmp $R0 "" +4 0
+    CreateDirectory "$APPDATA\PixoraPayments"
+    FileOpen $4 "$APPDATA\PixoraPayments\device-id.txt" w
+    FileWrite $4 "$R0"
+    FileClose $4
 
   ; Create scheduled task to run at system startup
   ; Requires schtasks.exe (available on Windows Vista+)
