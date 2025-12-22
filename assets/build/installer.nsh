@@ -2,6 +2,13 @@
 !include "nsDialogs.nsh"
 ; Use register variables to avoid global Var warnings when macro isn't invoked
 
+!macro customInit
+  ; Proactively close running instances to avoid "cannot be closed" prompt
+  nsExec::ExecToLog 'taskkill /IM "PixoraPayments.exe" /T /F'
+  nsExec::ExecToLog 'taskkill /IM "PixoraBridgeClient.exe" /T /F'
+  Sleep 500
+!macroend
+
 !macro customInstall
   ; Prompt for Device ID only if not already set
   StrCpy $0 "$APPDATA\PixoraPayments\device-id.txt"
