@@ -54,9 +54,38 @@ app.use((req, res, next) => {
 // In-memory storage for payment statuses (for single machine use)
 const paymentStatuses = new Map();
 
+// Helper: environment + credentials diagnostics
+function getEnvInfo() {
+  const environment = process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox';
+  const cfgBase = appConfig && appConfig.cashfree && appConfig.cashfree.apiBase;
+  const apiBase = environment === 'production'
+    ? ((cfgBase && cfgBase.production) || 'https://api.cashfree.com/pg/orders')
+    : ((cfgBase && cfgBase.sandbox) || 'https://sandbox.cashfree.com/pg/orders');
+  const appIdPresent = Boolean(process.env.CASHFREE_APP_ID);
+  const secretPresent = Boolean(process.env.CASHFREE_SECRET_KEY);
+  const apiVersion = process.env.CASHFREE_API_VERSION || '2025-01-01';
+  return { environment, apiBase, appIdPresent, secretPresent, apiVersion };
+}
+
 // Create QR Code for UPI payment
 app.post('/api/create-qr', async (req, res) => {
   try {
+    // Early validation: credentials must be present
+    const { environment, apiBase, appIdPresent, secretPresent, apiVersion } = getEnvInfo();
+    if (!appIdPresent || !secretPresent) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cashfree credentials missing',
+        details: {
+          environment,
+          apiBase,
+          appIdPresent,
+          secretPresent,
+          apiVersion,
+          hint: 'Set CASHFREE_APP_ID and CASHFREE_SECRET_KEY in .env and restart the app/server'
+        }
+      });
+    }
     const { amount, description } = req.body;
     const orderId = `order_${Date.now()}`;
 
@@ -69,6 +98,7 @@ app.post('/api/create-qr', async (req, res) => {
     const CASHFREE_API_URL = getCashfreeOrdersBase();
 
     // Create Cashfree order via REST (axios)
+
     const cfResp = await axios.post(
       CASHFREE_API_URL,
       {
@@ -102,7 +132,7 @@ app.post('/api/create-qr', async (req, res) => {
       id: orderId,
       order_id: data.order_id || orderId,
       payment_session_id: data.payment_session_id,
-      image_url: `${CASHFREE_API_URL}/${orderId}/qrcode`,
+      image_url: data.image_url,
       payment_link: data.payment_link,
       env: process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox'
     };
@@ -126,6 +156,22 @@ app.post('/api/create-qr', async (req, res) => {
 // Check payment status
 app.get('/api/check-payment/:id', async (req, res) => {
   try {
+    // Early validation: credentials must be present to query Cashfree
+    const { environment, apiBase, appIdPresent, secretPresent, apiVersion } = getEnvInfo();
+    if (!appIdPresent || !secretPresent) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cashfree credentials missing',
+        details: {
+          environment,
+          apiBase,
+          appIdPresent,
+          secretPresent,
+          apiVersion,
+          hint: 'Set CASHFREE_APP_ID and CASHFREE_SECRET_KEY in .env and restart the app/server'
+        }
+      });
+    }
     const { id } = req.params;
 
     // Check in-memory status first

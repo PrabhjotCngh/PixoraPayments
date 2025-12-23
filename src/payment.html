@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +9,9 @@
   <!-- Cashfree UI SDK for UPI components (use stable alias to avoid 404s) -->
   <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 </head>
-<body class="payment-screen" style="background-image: url('../assets/background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+
+<body class="payment-screen"
+  style="background-image: url('../assets/background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
 
   <div class="container">
     <div class="payment-header" style="position:relative;">
@@ -16,14 +19,14 @@
       <p class="subtitle">Scan the QR code with any UPI app to complete payment</p>
     </div>
     <div id="highlight-message" class="highlight-message" style="display:none;"></div>
-    
+
     <div class="qr-container">
       <div id="qr-code-wrapper" class="qr-code-wrapper loading">
         <div class="loader-overlay" aria-hidden="true"></div>
         <div class="loader" aria-label="Loading"></div>
         <div id="upi-qr"></div>
       </div>
-      
+
       <div class="payment-details">
         <div class="amount-display">
           <span class="currency">₹</span>
@@ -32,9 +35,9 @@
         <p class="payment-info">for 2 strip copies</p>
       </div>
     </div>
-    
-    
-    
+
+
+
     <div class="timer-container">
       <p>QR Code expires in: <span id="timer" class="timer">5:00</span></p>
     </div>
@@ -49,12 +52,17 @@
   </div>
 
   <!-- Device ID first-run modal -->
-  <div id="deviceIdModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center;">
-    <div style="background:#fff; color:#222; width:520px; max-width:90%; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.35); padding:22px 22px 16px;">
+  <div id="deviceIdModal"
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center;">
+    <div
+      style="background:#fff; color:#222; width:520px; max-width:90%; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.35); padding:22px 22px 16px;">
       <div style="font-size:18px; font-weight:700; margin-bottom:10px;">Device ID</div>
-      <div style="font-size:12px; color:#666; margin-bottom:10px;">Shown below and editable. Leave empty to keep current value.</div>
-      <input id="deviceIdInput" type="text" style="width:100%; padding:10px 12px; font-size:14px; border:1px solid #ddd; border-radius:8px; outline:none;" />
-      <div id="deviceIdError" style="display:none; color:#c0392b; font-size:12px; margin-top:8px;">Please enter a valid Device ID.</div>
+      <div style="font-size:12px; color:#666; margin-bottom:10px;">Shown below and editable. Leave empty to keep current
+        value.</div>
+      <input id="deviceIdInput" type="text"
+        style="width:100%; padding:10px 12px; font-size:14px; border:1px solid #ddd; border-radius:8px; outline:none;" />
+      <div id="deviceIdError" style="display:none; color:#c0392b; font-size:12px; margin-top:8px;">Please enter a valid
+        Device ID.</div>
       <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
         <button id="deviceIdSkip" class="btn btn-secondary" style="padding:10px 18px; font-size:14px;">Skip</button>
         <button id="deviceIdSave" class="btn btn-primary" style="padding:10px 18px; font-size:14px;">Save</button>
@@ -63,12 +71,16 @@
   </div>
 
   <!-- Network modal: shown when offline or network failures -->
-  <div id="networkModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
-    <div style="background:#fff; color:#222; width:520px; max-width:90%; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.35); padding:22px 22px 16px;">
+  <div id="networkModal"
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div
+      style="background:#fff; color:#222; width:520px; max-width:90%; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.35); padding:22px 22px 16px;">
       <div style="font-size:18px; font-weight:700; margin-bottom:10px;">No Internet Connection</div>
-      <div id="networkModalMsg" style="font-size:13px; color:#555; margin-bottom:12px;">Please check your network and tap Retry.</div>
+      <div id="networkModalMsg" style="font-size:13px; color:#555; margin-bottom:12px;">Please check your network and
+        tap Retry.</div>
       <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
-        <button id="networkDismiss" class="btn btn-secondary" style="padding:10px 18px; font-size:14px;">Dismiss</button>
+        <button id="networkDismiss" class="btn btn-secondary"
+          style="padding:10px 18px; font-size:14px;">Dismiss</button>
         <button id="networkRetry" class="btn btn-primary" style="padding:10px 18px; font-size:14px;">Retry</button>
       </div>
     </div>
@@ -102,8 +114,8 @@
           if (!acknowledgedFor || acknowledgedFor !== id) {
             showDeviceIdModal(id);
           }
-        } catch (_) {}
-      } catch (_) {}
+        } catch (_) { }
+      } catch (_) { }
 
 
       // Read selection from localStorage (fallback to config)
@@ -147,7 +159,7 @@
             const id = await (window.electronAPI && window.electronAPI.getDeviceId ? window.electronAPI.getDeviceId() : Promise.resolve(''));
             showDeviceIdModal(id);
           }
-        } catch (_) {}
+        } catch (_) { }
       });
 
       // Network listeners
@@ -164,14 +176,13 @@
 
     async function generateQRCode(amountInRupees, photoCount) {
       try {
-        clearStatus();
         const amount = amountInRupees * 100; // Convert to paise
         const description = `Photobooth Session - ${photoCount} ${photoCount === 2 ? 'strip copies' : 'photos'}`;
 
         // Create order via backend (returns order_id and payment_session_id)
         const response = await window.electronAPI.createQRCode(amount, description);
 
-        if (response.success) {
+        if (response.success && response.qrCode) {
           const { id, order_id, payment_session_id, payment_link, image_url, env } = response.qrCode;
           qrCodeId = order_id || id;
 
@@ -195,8 +206,7 @@
 
           const upiQr = cashfree.create('upiQr', {
             values: {
-              size: '280px',
-              paymentSessionId: payment_session_id
+              size: '280px'
             }
           });
 
@@ -206,8 +216,6 @@
             // If offline, show network modal instead of fallback
             if (!navigator.onLine) {
               showNetworkModal('sdk-loaderror-offline');
-              const wrapperEl = document.getElementById('qr-code-wrapper');
-              if (wrapperEl) wrapperEl.classList.remove('loading');
               return;
             }
             // Fallbacks: try local QR render from payment_link, else static image
@@ -215,15 +223,12 @@
               renderLocalQR(payment_link);
               setQrSourceBadge('local');
               clearStatus();
-              if (wrapperEl) wrapperEl.classList.remove('loading');
             } else if (image_url && qrMountEl) {
               qrMountEl.innerHTML = `<img src="${image_url}" alt="UPI QR Code" class="qr-image">`;
               setQrSourceBadge('image_url');
               clearStatus();
-              if (wrapperEl) wrapperEl.classList.remove('loading');
             } else {
               showError('Failed to load UPI QR. Please try again.');
-              if (wrapperEl) wrapperEl.classList.remove('loading');
             }
           });
 
@@ -239,8 +244,7 @@
           });
         } else {
           showError('Failed to create payment order. Please try again.');
-          const wrapperEl = document.getElementById('qr-code-wrapper');
-          if (wrapperEl) wrapperEl.classList.remove('loading');
+          // Do NOT hide loader here; keep it spinning until a success.
         }
       } catch (error) {
         console.error('Error generating QR/component:', error);
@@ -257,23 +261,23 @@
       const pollMs = (config && config.screens && Number(config.screens.paymentStatusPollMs)) || 2000;
       paymentCheckInterval = setInterval(async () => {
         if (!qrCodeId) return;
-        
+
         try {
           const response = await window.electronAPI.checkPayment(qrCodeId);
           // Check amount as well to avoid false positives
           const expectedAmount = Number(document.getElementById('amount').textContent);
           const paidAmount = Number(
             (response.amountInRupees !== undefined ? response.amountInRupees :
-             response.amount !== undefined ? response.amount / 100 : // if in paise
-             0)
+              response.amount !== undefined ? response.amount / 100 : // if in paise
+                0)
           );
           const amountMatches = Number.isFinite(paidAmount) && paidAmount === expectedAmount;
 
           if (response.success && response.paid && amountMatches) {
             cleanup();
             // Notify bridge that payment completed, then quit Pixora
-            try { await window.electronAPI.notifyPaymentComplete(); } catch (_) {}
-            try { await window.electronAPI.quitApp(); } catch (_) {}
+            try { await window.electronAPI.notifyPaymentComplete(); } catch (_) { }
+            try { await window.electronAPI.quitApp(); } catch (_) { }
           }
         } catch (error) {
           console.error('Error checking payment:', error);
@@ -286,15 +290,15 @@
 
     function startExpiryTimer(seconds) {
       expiryTime = Date.now() + (seconds * 1000);
-      
+
       timerInterval = setInterval(() => {
         const remaining = Math.max(0, expiryTime - Date.now());
         const minutes = Math.floor(remaining / 60000);
         const secs = Math.floor((remaining % 60000) / 1000);
-        
+
         const timerEl = document.getElementById('timer');
         if (timerEl) timerEl.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
-        
+
         if (remaining <= 0) {
           onTimerExpired();
         }
@@ -351,8 +355,8 @@
       const tapHandler = async () => {
         if (tapped) return;
         tapped = true;
-          try { await window.electronAPI.notifyPaymentComplete(); } catch (_) {}
-        try { await window.electronAPI.quitApp(); } catch (_) {}
+        try { await window.electronAPI.notifyPaymentComplete(); } catch (_) { }
+        try { await window.electronAPI.quitApp(); } catch (_) { }
       };
       document.body.addEventListener('click', tapHandler);
       document.body.addEventListener('touchstart', tapHandler);
@@ -368,14 +372,6 @@
       statusEl.textContent = message;
       statusEl.style.display = 'block';
       statusEl.classList.add('error');
-    }
-
-    function clearStatus() {
-      const statusEl = document.getElementById('status-message');
-      if (!statusEl) return;
-      statusEl.textContent = '';
-      statusEl.style.display = 'none';
-      statusEl.classList.remove('error');
     }
 
     function showNetworkModal(source) {
@@ -419,7 +415,7 @@
             if (msg) msg.textContent = 'Retry failed. Please check connection and try again.';
           }
         };
-      } catch (_) {}
+      } catch (_) { }
     }
 
     function hideNetworkModal() {
@@ -450,7 +446,7 @@
       modal.style.display = 'flex';
 
       const close = (updatedId) => {
-        try { if (updatedId) localStorage.setItem('deviceIdAcknowledgedFor', updatedId); } catch (_) {}
+        try { if (updatedId) localStorage.setItem('deviceIdAcknowledgedFor', updatedId); } catch (_) { }
         modal.style.display = 'none';
         // Update badge
         const badge = document.getElementById('device-badge');
@@ -468,7 +464,7 @@
           return;
         }
         try {
-          const res = await (window.electronAPI && window.electronAPI.setDeviceId ? window.electronAPI.setDeviceId(v) : Promise.resolve({ success:false }));
+          const res = await (window.electronAPI && window.electronAPI.setDeviceId ? window.electronAPI.setDeviceId(v) : Promise.resolve({ success: false }));
           if (res && res.success) {
             close(res.deviceId || v);
           } else {
@@ -481,4 +477,5 @@
     }
   </script>
 </body>
+
 </html>
