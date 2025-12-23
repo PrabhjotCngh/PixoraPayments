@@ -3,6 +3,7 @@ const { Cashfree } = require('cashfree-pg');
 const axios = require('axios');
 const crypto = require('crypto');
 require('dotenv').config();
+const appConfig = require('./config.json');
 
 const app = express();
 app.use(express.json());
@@ -62,9 +63,13 @@ app.post('/api/create-qr', async (req, res) => {
     const { amount, description } = req.body;
     const orderId = `order_${Date.now()}`;
 
-    const CASHFREE_API_URL = process.env.CASHFREE_ENV === 'production'
-      ? 'https://api.cashfree.com/pg/orders'
-      : 'https://sandbox.cashfree.com/pg/orders';
+    const getCashfreeOrdersBase = () => {
+      const isProd = process.env.CASHFREE_ENV === 'production';
+      const cfgBase = appConfig && appConfig.cashfree && appConfig.cashfree.apiBase;
+      if (isProd) return (cfgBase && cfgBase.production) || 'https://api.cashfree.com/pg/orders';
+      return (cfgBase && cfgBase.sandbox) || 'https://sandbox.cashfree.com/pg/orders';
+    };
+    const CASHFREE_API_URL = getCashfreeOrdersBase();
 
     // Create Cashfree order via REST (axios)
     const cfResp = await axios.post(
@@ -101,7 +106,8 @@ app.post('/api/create-qr', async (req, res) => {
       order_id: data.order_id || orderId,
       payment_session_id: data.payment_session_id,
       image_url: `${CASHFREE_API_URL}/${orderId}/qrcode`,
-      payment_link: data.payment_link
+      payment_link: data.payment_link,
+      env: process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox'
     };
 
     paymentStatuses.set(orderId, {
@@ -132,9 +138,13 @@ app.get('/api/check-payment/:id', async (req, res) => {
     }
 
     // Fetch order status from Cashfree via REST (matches your working curl)
-    const CASHFREE_API_BASE = process.env.CASHFREE_ENV === 'production'
-      ? 'https://api.cashfree.com/pg/orders'
-      : 'https://sandbox.cashfree.com/pg/orders';
+    const getCashfreeOrdersBase = () => {
+      const isProd = process.env.CASHFREE_ENV === 'production';
+      const cfgBase = appConfig && appConfig.cashfree && appConfig.cashfree.apiBase;
+      if (isProd) return (cfgBase && cfgBase.production) || 'https://api.cashfree.com/pg/orders';
+      return (cfgBase && cfgBase.sandbox) || 'https://sandbox.cashfree.com/pg/orders';
+    };
+    const CASHFREE_API_BASE = getCashfreeOrdersBase();
 
     const cfResp = await axios.get(`${CASHFREE_API_BASE}/${encodeURIComponent(id)}` , {
       headers: {
@@ -209,9 +219,10 @@ app.post('/webhook', (req, res) => {
 // Health check
 app.get('/health', (req, res) => {
   const environment = process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox';
+  const cfgBase = appConfig && appConfig.cashfree && appConfig.cashfree.apiBase;
   const apiBase = environment === 'production'
-    ? 'https://api.cashfree.com/pg/orders'
-    : 'https://sandbox.cashfree.com/pg/orders';
+    ? ((cfgBase && cfgBase.production) || 'https://api.cashfree.com/pg/orders')
+    : ((cfgBase && cfgBase.sandbox) || 'https://sandbox.cashfree.com/pg/orders');
   res.json({
     status: 'running',
     environment,

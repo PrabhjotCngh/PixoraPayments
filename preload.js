@@ -40,17 +40,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setDeviceId: (newId) => ipcRenderer.invoke('set-device-id', newId),
   
   // Payment APIs
-  createQRCode: (amount, description) => {
-    return fetch('https://pixora.textberry.io/api/create-qr', {
+  createQRCode: async (amount, description) => {
+    const base = await ipcRenderer.invoke('get-backend-base');
+    const url = `${base}/api/create-qr`;
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount, description })
-    }).then(res => res.json());
+    });
+    return res.json();
   },
   
-  checkPayment: (qrCodeId) => {
-    return fetch(`https://pixora.textberry.io/api/check-payment/${qrCodeId}`)
-      .then(res => res.json());
+  checkPayment: async (qrCodeId) => {
+    const base = await ipcRenderer.invoke('get-backend-base');
+    const url = `${base}/api/check-payment/${encodeURIComponent(qrCodeId)}`;
+    const res = await fetch(url);
+    return res.json();
   }
   
 });

@@ -18,6 +18,12 @@
   "bridge": {
     "baseUrl": "https://pixora.textberry.io"      
   },
+  "cashfree": {
+    "apiBase": {
+      "production": "https://api.cashfree.com/pg/orders",
+      "sandbox": "https://sandbox.cashfree.com/pg/orders"
+    }
+  },
   "window": {
     "width": 1200,
     "height": 800,

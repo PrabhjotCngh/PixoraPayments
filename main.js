@@ -120,6 +120,16 @@ ipcMain.handle('get-config', async () => {
   return config;
 });
 
+// Get backend base URL: local if USE_LOCAL_BACKEND enabled, else hosted
+ipcMain.handle('get-backend-base', async () => {
+  const config = require('./config.json');
+  const useLocal = (process.env.USE_LOCAL_BACKEND || '').trim().toLowerCase();
+  if (useLocal === 'true' || useLocal === '1') {
+    return 'http://localhost:3000';
+  }
+  return (config && config.bridge && config.bridge.baseUrl) ? config.bridge.baseUrl : 'https://pixora.textberry.io';
+});
+
 // Quit the Pixora app on demand
 ipcMain.handle('quit-app', async () => {
   try {

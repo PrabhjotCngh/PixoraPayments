@@ -341,19 +341,24 @@ body {
   color: #444;
 }
 
-/* Device connection badge */
-.device-badge {
+/* Badge stack (device + QR source) */
+.badge-stack {
   position: fixed;
   bottom: 12px;
-  right: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 3;
+  pointer-events: none;
+}
+.badge-item {
   background: rgba(255, 255, 255, 0.9);
   color: #222;
   border-radius: 8px;
   padding: 6px 10px;
   font-size: 12px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
-  z-index: 3;
-  pointer-events: none;
 }
 
 .payment-details {
