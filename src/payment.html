@@ -164,6 +164,7 @@
 
     async function generateQRCode(amountInRupees, photoCount) {
       try {
+        clearStatus();
         const amount = amountInRupees * 100; // Convert to paise
         const description = `Photobooth Session - ${photoCount} ${photoCount === 2 ? 'strip copies' : 'photos'}`;
 
@@ -213,10 +214,12 @@
             if (payment_link && window.QRCode && qrMountEl) {
               renderLocalQR(payment_link);
               setQrSourceBadge('local');
+              clearStatus();
               if (wrapperEl) wrapperEl.classList.remove('loading');
             } else if (image_url && qrMountEl) {
               qrMountEl.innerHTML = `<img src="${image_url}" alt="UPI QR Code" class="qr-image">`;
               setQrSourceBadge('image_url');
+              clearStatus();
               if (wrapperEl) wrapperEl.classList.remove('loading');
             } else {
               showError('Failed to load UPI QR. Please try again.');
@@ -232,6 +235,7 @@
             // Hide loader once component is ready
             if (wrapperEl) wrapperEl.classList.remove('loading');
             setQrSourceBadge('sdk', cfMode);
+            clearStatus();
           });
         } else {
           showError('Failed to create payment order. Please try again.');
@@ -248,11 +252,7 @@
         if (wrapperEl) wrapperEl.classList.remove('loading');
       }
     }
-    /*
-    Restored paymentSessionId in the Cashfree SDK initialization in payment.html so the component has both size and paymentSessionId:
-Now cashfree.create('upiQr', { values: { size: '280px', paymentSessionId: payment_session_id } }).
 
-*/
     function startPaymentCheck() {
       const pollMs = (config && config.screens && Number(config.screens.paymentStatusPollMs)) || 2000;
       paymentCheckInterval = setInterval(async () => {
@@ -370,6 +370,14 @@ Now cashfree.create('upiQr', { values: { size: '280px', paymentSessionId: paymen
       statusEl.classList.add('error');
     }
 
+    function clearStatus() {
+      const statusEl = document.getElementById('status-message');
+      if (!statusEl) return;
+      statusEl.textContent = '';
+      statusEl.style.display = 'none';
+      statusEl.classList.remove('error');
+    }
+
     function showNetworkModal(source) {
       try {
         cleanup();
@@ -424,8 +432,8 @@ Now cashfree.create('upiQr', { values: { size: '280px', paymentSessionId: paymen
       const badge = document.getElementById('qr-source-badge');
       if (!badge) return;
       const label = {
-        'sdk': `QR source: Cashfree SDK${mode ? ` (${mode})` : ''}`,
-        'image_url': 'QR source: Cashfree image_url',
+        'sdk': `QR source: SDK${mode ? ` (${mode})` : ''}`,
+        'image_url': 'QR source: image_url',
         'static': 'QR source: Static QR',
         'local': 'QR source: Local QR (payment_link)'
       }[source] || 'QR source: Unknown';

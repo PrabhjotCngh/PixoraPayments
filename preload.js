@@ -1,9 +1,38 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Helper: best-effort wait for backend /health to be ready (handles first-launch race)
+async function ensureBackendReady(timeoutMs = 4000) {
+  try {
+    const base = await ipcRenderer.invoke('get-backend-base');
+    const healthUrl = `${base}/health`;
+    const start = Date.now();
+    let delay = 150;
+    const tryOnce = async () => {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 800);
+      try {
+        const res = await fetch(healthUrl, { signal: ctrl.signal });
+        clearTimeout(t);
+        return res.ok;
+      } catch (_) {
+        clearTimeout(t);
+        return false;
+      }
+    };
+    while ((Date.now() - start) < timeoutMs) {
+      if (await tryOnce()) return true;
+      await new Promise(r => setTimeout(r, delay));
+      delay = Math.min(delay * 2, 600);
+    }
+  } catch (_) {}
+  return false;
+}
+
 // Expose safe APIs to the renderer process
 contextBridge.exposeInMainWorld('electronAPI', {
   // Quit the Pixora app
   quitApp: () => ipcRenderer.invoke('quit-app'),
+
   // Notify bridge that payment is complete (single source)
   notifyPaymentComplete: async () => {
     try {
@@ -42,6 +71,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Payment APIs
   createQRCode: async (amount, description) => {
     const base = await ipcRenderer.invoke('get-backend-base');
+    // Best-effort: wait briefly for backend health on first launch
+    try { await ensureBackendReady(); } catch (_) {}
     const url = `${base}/api/create-qr`;
     const res = await fetch(url, {
       method: 'POST',

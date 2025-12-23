@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { spawn, spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 const os = require('os');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -50,10 +50,6 @@ function createWindow() {
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(false);
   mainWindow.webContents.openDevTools();
-  mainWindow.webContents.on('did-finish-load', () => {
-    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} mainWindow did-finish-load: ${mainWindow.webContents.getURL()}\n`); } catch(e){}
-    console.log('mainWindow did-finish-load', mainWindow.webContents.getURL());
-  });
 
   // Respect configured window behavior and show the window
   mainWindow.once('ready-to-show', () => {
@@ -89,14 +85,7 @@ function createWindow() {
     }
   });
 
-  // Log that window creation completed
-  try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Created main window (kiosk=${mainWindow.isKiosk()}, alwaysOnTop=${mainWindow.isAlwaysOnTop()}, bounds=${JSON.stringify(mainWindow.getBounds())})\n`); } catch (e) {}
-
-  // Monitor window visibility/focus changes for debug
-  mainWindow.on('show', () => { try { fs.appendFileSync('debug.log', `${new Date().toISOString()} mainWindow.show\n`); } catch(e){}; console.log('mainWindow show'); });
-  mainWindow.on('hide', () => { try { fs.appendFileSync('debug.log', `${new Date().toISOString()} mainWindow.hide\n`); } catch(e){}; console.log('mainWindow hide'); });
-  mainWindow.on('focus', () => { try { fs.appendFileSync('debug.log', `${new Date().toISOString()} mainWindow.focus\n`); } catch(e){}; console.log('mainWindow focus'); });
-  mainWindow.on('blur', () => { try { fs.appendFileSync('debug.log', `${new Date().toISOString()} mainWindow.blur\n`); } catch(e){}; console.log('mainWindow blur'); });
+  // Trim verbose window lifecycle logging
 }
 
 // Start Express server for webhooks
@@ -125,7 +114,7 @@ ipcMain.handle('get-backend-base', async () => {
   const config = require('./config.json');
   const useLocal = (process.env.USE_LOCAL_BACKEND || '').trim().toLowerCase();
   if (useLocal === 'true' || useLocal === '1') {
-    return 'http://localhost:3000';
+    return 'http://127.0.0.1:3000';
   }
   return (config && config.bridge && config.bridge.baseUrl) ? config.bridge.baseUrl : 'https://pixora.textberry.io';
 });

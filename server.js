@@ -1,5 +1,4 @@
 const express = require('express');
-const { Cashfree } = require('cashfree-pg');
 const axios = require('axios');
 const crypto = require('crypto');
 require('dotenv').config();
@@ -50,9 +49,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize Cashfree v5.1.0 client
-const cfEnv = process.env.CASHFREE_ENV === 'production' ? Cashfree.PRODUCTION : Cashfree.SANDBOX;
-const cashfree = new Cashfree(cfEnv, process.env.CASHFREE_APP_ID, process.env.CASHFREE_SECRET_KEY);
+// Cashfree REST: we call the HTTP PG endpoints via axios; no SDK client needed here
 
 // In-memory storage for payment statuses (for single machine use)
 const paymentStatuses = new Map();

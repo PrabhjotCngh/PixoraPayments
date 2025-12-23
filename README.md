@@ -29,8 +29,10 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 - `payment.html` (Scan & Pay)
   - Gateway mode:
     - Creates order via backend and renders Cashfree UPI QR.
-    - Cashfree UI SDK mode is driven by `.env` `CASHFREE_ENV` (`sandbox`|`production`).
-    - Polls status at the configured interval (`screens.paymentStatusPollMs`). Treats as success only if `paid` and the amount matches the initially selected amount.
+    - SDK mode matches server `CASHFREE_ENV` and is returned in the QR response (`env: 'sandbox'|'production'`).
+    - Polls status at the configured interval (`screens.paymentStatusPollMs`). Success only if `paid` and the amount matches the selected amount.
+    - Offline handling: shows a network modal on fetch/SDK errors with a Retry button to re-attempt QR generation.
+    - QR Source badge: shows the origin under the device badge — e.g. `SDK (production|sandbox)`, `image_url`, `local QR`, or `static`. Positioned bottom-left in a stacked badge container for visibility.
 
 ### Paid Credit + DSLRBooth Event Sequence
 
@@ -39,12 +41,7 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
   - Example setup on Windows:
     - User-level: `setx PIXORA_CREDIT_TTL_SEC 1800`
     - .env file: `PIXORA_CREDIT_TTL_SEC=1800`
-- State machine enforces ordered progression before consuming credit:
-  - Expected order (simplified): `session_start → countdown_start/countdown → capture_start → file_download → processing_start → sharing_screen/printing/file_upload → session_end`.
-  - The client only consumes credit at milestones reached via valid transitions:
-    - Entering `capturing` (`capture_start`) from `started` or `countdown`.
-    - Entering `processing` (`processing_start`) from `capturing` or `downloading`.
-  - Out-of-order events do not advance the state or consume credit.
+- State machine enforces ordered progression. Credit is consumed only on the `printing` milestone reached via valid transitions (e.g., from `processing`, `sharing`, or `downloading`). Out-of-order events neither advance the state nor consume credit.
 - Behavior:
   - On `session_start` with valid credit, payment app launch is skipped and credit is marked pending.
   - If the session progresses to a milestone (as above), the pending credit is consumed for that session.
@@ -52,7 +49,7 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 
 ### Admin Controls: Reset Credit & Launch Payment
 
-    - On success: notifies bridge (`notifyPaymentComplete`) and quits Pixora.
+  - On success: notifies bridge (`notifyPaymentComplete`) and quits Pixora.
   - Static mode:
     - Renders `assets.staticQrImage` and shows a highlight message.
     - Tap anywhere: notifies bridge and quits Pixora.
@@ -91,14 +88,45 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 - `getCashfreeEnv()`: read `CASHFREE_ENV` from `.env` (`sandbox`|`production`).
 - `createQRCode(amount, description)`: backend call to create order.
 - `checkPayment(orderId)`: backend call to check payment status.
+- Backend base selection: payment API calls resolve the base via IPC (`get-backend-base`). When `USE_LOCAL_BACKEND=true`, calls go to `http://127.0.0.1:3000`; otherwise they use the hosted domain from config (`bridge.baseUrl`).
 - `quitApp()`: closes the Electron app.
 - `notifyPaymentComplete()`: reads `bridge.baseUrl` from config and calls `{baseUrl}?event_type=payment_complete&deviceId=<auto>`. The `deviceId` is auto-picked in the same order as `getDeviceId()` (env → persisted file → hostname).
 
+### Backend Target Examples
+
+Enable local backend for development:
+
+```bash
+# .env
+USE_LOCAL_BACKEND=true
+```
+
+- Effect: payment APIs hit `http://127.0.0.1:3000` and the app spawns the local Express server.
+- Verify: open `http://127.0.0.1:3000/health`.
+
+Use hosted backend in production:
+
+```bash
+# .env
+USE_LOCAL_BACKEND=false
+```
+
+- Effect: payment APIs hit the hosted domain from config (`bridge.baseUrl`, e.g., `https://pixora.textberry.io`).
+- Verify: open `https://pixora.textberry.io/health`.
+
 ## Backend (`server.js`)
 
-- `POST /api/create-qr`: creates Cashfree order and returns QR details.
+- `POST /api/create-qr`: creates Cashfree order and returns QR details. Response includes `env` (`sandbox`|`production`), `payment_session_id`, optional `image_url`, and `payment_link`.
 - `GET /api/check-payment/:orderId`: returns success and amount so UI can verify.
 - Webhook endpoint (optional): for signature-verified updates in production.
+
+### Health Endpoint
+
+- `GET /health`: diagnostics for environment and config.
+  - `environment`: `sandbox` or `production`.
+  - `apiBase`: Cashfree REST base URL in use (from `config.json`).
+  - `appIdPresent` / `secretPresent`: whether credentials are detected in env.
+  - `apiVersion`: Cashfree API version configured.
 
 ### Local Backend (dev toggle)
 
@@ -194,3 +222,8 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 - Open firewall for `localhost:3000` (backend) and `localhost:4000` (bridge).
 - Kiosk/always-on-top behavior is driven by `config.window`.
 - Adjust `payment.qrCodeExpiryMinutes`, `screens.successDuration`, and `screens.failureDuration` to fit your booth timing.
+
+### Dev Notes
+
+- Electron DevTools are disabled by default to reduce noise and avoid Autofill warnings.
+- Cashfree REST base URLs are configured in `config.json` (`cashfree.apiBase.production` / `cashfree.apiBase.sandbox`). The backend selects the correct one based on `CASHFREE_ENV`.

@@ -8,13 +8,17 @@ const path = require('path');
 const crypto = require('crypto');
 require('dotenv').config();
 
-// Logger with IST timestamps
+// Logger with IST timestamps (trimmed by default)
 function ts() {
   try { return new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }); } catch (_) { return new Date().toISOString(); }
 }
 function log(msg) {
+  const v = String(process.env.CLIENT_VERBOSE_LOGS || '').toLowerCase();
+  const isVerbose = v === 'true' || v === '1' || v === 'debug';
+  const important = /error|failed|not found|ws close|ws error|device id update|credit reset|consumed paid credit/i.test(String(msg));
+  if (!isVerbose && !important) return;
   try { fs.appendFileSync('bridge-debug.log', `${ts()} ${msg}\n`); } catch (_) {}
-  console.log(msg);
+  try { console.log(msg); } catch (_) {}
 }
 
 // Resolve Pixora exe dynamically
@@ -178,8 +182,8 @@ function launchPixora() {
       }
     `;
     const ps = spawn('powershell.exe', ['-NoProfile','-ExecutionPolicy','Bypass','-Command', psScript], { windowsHide: true, env: { ...process.env, PIXORA_ALWAYS_ON_TOP: 'true' } });
-    ps.stdout.on('data', (d) => log(`PS: ${d.toString().trim()}`));
-    ps.stderr.on('data', (d) => log(`PS Err: ${d.toString().trim()}`));
+    ps.stdout.on('data', (d) => { const v = d.toString().trim(); if (v) log(`PS: ${v}`); });
+    ps.stderr.on('data', (d) => { const v = d.toString().trim(); if (v) log(`PS Err: ${v}`); });
   } catch (e) { log(`client launchPixora error: ${e}`); }
 }
 function restoreDSLRBooth() {
@@ -261,7 +265,6 @@ function connect() {
   ws.on('message', (data) => {
     try {
       const msg = JSON.parse(data.toString());
-      log(`client recv: ${data.toString()}`);
       // Drop stale or duplicate events using event_id + created_at
       if (!global.__seenEvents) global.__seenEvents = new Map(); // id -> ts
       const now = Date.now();
