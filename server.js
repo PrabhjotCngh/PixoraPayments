@@ -70,34 +70,13 @@ function getEnvInfo() {
 // Create QR Code for UPI payment
 app.post('/api/create-qr', async (req, res) => {
   try {
-    // Early validation: credentials must be present
-    const { environment, apiBase, appIdPresent, secretPresent, apiVersion } = getEnvInfo();
-    if (!appIdPresent || !secretPresent) {
-      return res.status(400).json({
-        success: false,
-        error: 'Cashfree credentials missing',
-        details: {
-          environment,
-          apiBase,
-          appIdPresent,
-          secretPresent,
-          apiVersion,
-          hint: 'Set CASHFREE_APP_ID and CASHFREE_SECRET_KEY in .env and restart the app/server'
-        }
-      });
-    }
     const { amount, description } = req.body;
     const orderId = `order_${Date.now()}`;
 
-    const getCashfreeOrdersBase = () => {
-      const isProd = process.env.CASHFREE_ENV === 'production';
-      const cfgBase = appConfig && appConfig.cashfree && appConfig.cashfree.apiBase;
-      if (isProd) return (cfgBase && cfgBase.production) || 'https://api.cashfree.com/pg/orders';
-      return (cfgBase && cfgBase.sandbox) || 'https://sandbox.cashfree.com/pg/orders';
-    };
-    const CASHFREE_API_URL = getCashfreeOrdersBase();
-
-    // Create Cashfree order via REST (axios)
+    const isProd = process.env.CASHFREE_ENV === 'production';
+    const CASHFREE_API_URL = isProd
+      ? 'https://api.cashfree.com/pg/orders'
+      : 'https://sandbox.cashfree.com/pg/orders';
 
     const cfResp = await axios.post(
       CASHFREE_API_URL,
@@ -109,46 +88,30 @@ app.post('/api/create-qr', async (req, res) => {
         customer_details: {
           customer_id: `customer_${Date.now()}`,
           customer_phone: '9999999999'
-        },
-        order_meta: {
-          notify_url: `https://pixora.textberry.io/webhook`,
-          payment_methods: "upi"
         }
       },
       {
         headers: {
+          'Content-Type': 'application/json',
           'x-client-id': process.env.CASHFREE_APP_ID,
           'x-client-secret': process.env.CASHFREE_SECRET_KEY,
-          'x-api-version': process.env.CASHFREE_API_VERSION || '2025-01-01'
+          'x-api-version': '2023-08-01'
         }
       }
     );
 
     const data = cfResp.data;
 
-    // Prepare QR data for frontend
-    const qrData = {
-      id: orderId,
-      order_id: data.order_id || orderId,
+    res.json({
+      success: true,
+      order_id: data.order_id,
       payment_session_id: data.payment_session_id,
-      image_url: data.image_url,
-      payment_link: data.payment_link,
-      env: process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox'
-    };
-
-    paymentStatuses.set(orderId, {
-      status: data.order_status || 'ACTIVE',
-      orderData: data,
-      amount: amount,
-      createdAt: Date.now()
+      env: isProd ? 'production' : 'sandbox'
     });
 
-    console.log('Cashfree order created (REST):', orderId);
-    res.json({ success: true, qrCode: qrData });
   } catch (error) {
-    const errPayload = error?.response?.data || { message: error.message };
-    console.error('Error creating QR (REST):', errPayload);
-    res.status(500).json({ success: false, error: 'Failed to generate QR', details: errPayload });
+    console.error(error?.response?.data || error.message);
+    res.status(500).json({ success: false });
   }
 });
 
