@@ -41,11 +41,11 @@ app.use((req, res, next) => {
 
     res.on('finish', () => {
       let out = res.locals._respBody;
-      try { if (typeof out !== 'string') out = JSON.stringify(out); } catch (_) {}
+      try { if (typeof out !== 'string') out = JSON.stringify(out); } catch (_) { }
       if (out && out.length > 5000) out = out.slice(0, 5000) + '... [truncated]';
       console.log(`RESPONSE ${req.method} ${req.originalUrl} -> ${res.statusCode}${out ? `\n${out}` : ''}`);
     });
-  } catch (_) {}
+  } catch (_) { }
   next();
 });
 
@@ -117,7 +117,6 @@ app.post('/api/create-qr', async (req, res) => {
       },
       {
         headers: {
-          'Content-Type': 'application/json',
           'x-client-id': process.env.CASHFREE_APP_ID,
           'x-client-secret': process.env.CASHFREE_SECRET_KEY,
           'x-api-version': process.env.CASHFREE_API_VERSION || '2025-01-01'
@@ -189,7 +188,7 @@ app.get('/api/check-payment/:id', async (req, res) => {
     };
     const CASHFREE_API_BASE = getCashfreeOrdersBase();
 
-    const cfResp = await axios.get(`${CASHFREE_API_BASE}/${encodeURIComponent(id)}` , {
+    const cfResp = await axios.get(`${CASHFREE_API_BASE}/${encodeURIComponent(id)}`, {
       headers: {
         'x-client-id': process.env.CASHFREE_APP_ID,
         'x-client-secret': process.env.CASHFREE_SECRET_KEY,
@@ -225,6 +224,9 @@ app.post('/webhook', (req, res) => {
     const timestamp = req.headers['x-webhook-timestamp'];
     const body = JSON.stringify(req.body);
 
+    // Log every webhook request for debugging
+    console.log('[Webhook] Received:', { headers: req.headers, body: req.body });
+
     // Verify webhook signature (Cashfree uses HMAC SHA256)
     const signatureString = timestamp + body;
     const expectedSignature = crypto
@@ -236,10 +238,11 @@ app.post('/webhook', (req, res) => {
       const eventType = req.body.type;
       const data = req.body.data;
 
+      console.log('[Webhook] Signature valid. Event:', eventType);
+
       if (eventType === 'PAYMENT_SUCCESS_WEBHOOK') {
         const orderId = data.order.order_id;
-        console.log('Payment webhook received for order:', orderId);
-        
+        console.log('[Webhook] Payment webhook received for order:', orderId);
         paymentStatuses.set(orderId, {
           status: 'PAID',
           orderData: data.order,
@@ -250,11 +253,36 @@ app.post('/webhook', (req, res) => {
 
       res.json({ status: 'ok' });
     } else {
-      console.log('Invalid webhook signature');
-      res.status(400).json({ error: 'Invalid signature' });
+      console.log('[Webhook] Invalid signature. Expected:', expectedSignature, 'Received:', signature);
+      res.status(400).json({ error: 'Invalid signature', expectedSignature, receivedSignature: signature });
     }
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('[Webhook] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Test endpoint to manually POST webhook payload for debugging
+app.post('/webhook/test', (req, res) => {
+  try {
+    console.log('[Webhook Test] Received:', req.body);
+    // Simulate a successful payment webhook
+    const eventType = req.body.type || 'PAYMENT_SUCCESS_WEBHOOK';
+    const data = req.body.data || {};
+    if (eventType === 'PAYMENT_SUCCESS_WEBHOOK' && data.order && data.order.order_id) {
+      const orderId = data.order.order_id;
+      paymentStatuses.set(orderId, {
+        status: 'PAID',
+        orderData: data.order,
+        paymentData: data.payment,
+        updatedAt: Date.now()
+      });
+      console.log('[Webhook Test] Payment status updated for order:', orderId);
+      return res.json({ status: 'ok', test: true });
+    }
+    res.json({ status: 'received', test: true });
+  } catch (error) {
+    console.error('[Webhook Test] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
