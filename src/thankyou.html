@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="payment-screen"
+    style="background-image: url('../assets/background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+    <div class="container" style="display: flex; align-items: center; justify-content: center; min-height: 80vh;">
+        <div id="loader" class="qr-code-wrapper loading" style="position: relative; min-height: 60vh; width: 100%;">
+            <div class="loader" style="width: 96px; height: 96px; border-width: 12px;"></div>
+        </div>
+    </div>
+    <script>
+        function getOrderIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('order_id');
+        }
+
+        async function checkPayment(orderId) {
+            try {
+                const response = await window.electronAPI.checkPayment(orderId);
+                // Check amount as well to avoid false positives
+                const expectedAmount = config.payment.amountInRupees;
+                const paidAmount = response.orderAmount;
+                const amountMatches = Number.isFinite(paidAmount) && paidAmount === expectedAmount;
+
+                if (response.success && response.paid && amountMatches) {
+                    window.location.replace('success.html');
+                } else {
+                    window.location.replace('failure.html');
+                }
+            } catch (e) {
+                window.location.replace('failure.html');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const orderId = getOrderIdFromUrl();
+            if (orderId) {
+                checkPayment(orderId);
+            } else {
+                window.location.replace('failure.html');
+            }
+        });
+    </script>
+</body>
+
+</html>

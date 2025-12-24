@@ -4,8 +4,13 @@ const crypto = require('crypto');
 require('dotenv').config();
 const appConfig = require('./config.json');
 
+
+const path = require('path');
 const app = express();
 app.use(express.json());
+
+// Serve static files from src directory
+app.use(express.static(path.join(__dirname, 'src')));
 
 // Curl-style request/response logging to console
 app.use((req, res, next) => {
@@ -158,10 +163,10 @@ app.get('/api/check-payment/:id', async (req, res) => {
         orderData: data
       });
       console.log('Payment successful for order:', id);
-      return res.json({ success: true, paid: true });
+      return res.json({ success: true, paid: true, orderAmount: data.order_amount });
     }
 
-    return res.json({ success: true, paid: false, status: orderStatus });
+    return res.json({ success: true, paid: false, status: orderStatus, orderAmount: data.order_amount });
   } catch (error) {
     const errPayload = error?.response?.data || { message: error.message };
     console.error('Error checking payment (REST):', errPayload);
@@ -211,34 +216,9 @@ app.post('/webhook', (req, res) => {
   }
 });
 
-// Test endpoint to manually POST webhook payload for debugging
-app.post('/webhook/test', (req, res) => {
-  try {
-    console.log('[Webhook Test] Received:', req.body);
-    // Simulate a successful payment webhook
-    const eventType = req.body.type || 'PAYMENT_SUCCESS_WEBHOOK';
-    const data = req.body.data || {};
-    if (eventType === 'PAYMENT_SUCCESS_WEBHOOK' && data.order && data.order.order_id) {
-      const orderId = data.order.order_id;
-      paymentStatuses.set(orderId, {
-        status: 'PAID',
-        orderData: data.order,
-        paymentData: data.payment,
-        updatedAt: Date.now()
-      });
-      console.log('[Webhook Test] Payment status updated for order:', orderId);
-      return res.json({ status: 'ok', test: true });
-    }
-    res.json({ status: 'received', test: true });
-  } catch (error) {
-    console.error('[Webhook Test] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Health check
 app.get('/health', (req, res) => {
-  const environment = process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox';
+  const environment = process.env.CASHFREE_ENV;
   const cfgBase = appConfig && appConfig.cashfree && appConfig.cashfree.apiBase;
   const apiBase = environment === 'production'
     ? ((cfgBase && cfgBase.production) || 'https://api.cashfree.com/pg/orders')
