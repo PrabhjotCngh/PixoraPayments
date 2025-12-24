@@ -41,11 +41,11 @@ app.use((req, res, next) => {
 
     res.on('finish', () => {
       let out = res.locals._respBody;
-      try { if (typeof out !== 'string') out = JSON.stringify(out); } catch (_) {}
+      try { if (typeof out !== 'string') out = JSON.stringify(out); } catch (_) { }
       if (out && out.length > 5000) out = out.slice(0, 5000) + '... [truncated]';
       console.log(`RESPONSE ${req.method} ${req.originalUrl} -> ${res.statusCode}${out ? `\n${out}` : ''}`);
     });
-  } catch (_) {}
+  } catch (_) { }
   next();
 });
 
@@ -81,8 +81,8 @@ app.post('/api/create-qr', async (req, res) => {
           customer_phone: '9999999999'
         },
         order_meta: {
-          notify_url: `https://pixora.textberry.io/webhook`,
-          payment_methods: "upi"
+          return_url: 'https://pixora.textberry.io/thankyou.html?order_id=' + encodeURIComponent(orderId),
+          notify_url: `https://pixora.textberry.io/webhook`
         }
       },
       {
@@ -99,12 +99,9 @@ app.post('/api/create-qr', async (req, res) => {
 
     // Prepare QR data for frontend
     const qrData = {
-      id: orderId,
-      order_id: data.order_id || orderId,
+      order_id: data.order_id,
       payment_session_id: data.payment_session_id,
-      image_url: `${CASHFREE_API_URL}/${orderId}/qrcode`,
-      payment_link: data.payment_link,
-      env: process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox'
+      env: process.env.CASHFREE_ENV
     };
 
     paymentStatuses.set(orderId, {
@@ -143,7 +140,7 @@ app.get('/api/check-payment/:id', async (req, res) => {
     };
     const CASHFREE_API_BASE = getCashfreeOrdersBase();
 
-    const cfResp = await axios.get(`${CASHFREE_API_BASE}/${encodeURIComponent(id)}` , {
+    const cfResp = await axios.get(`${CASHFREE_API_BASE}/${encodeURIComponent(id)}`, {
       headers: {
         'x-client-id': process.env.CASHFREE_APP_ID,
         'x-client-secret': process.env.CASHFREE_SECRET_KEY,
@@ -185,15 +182,16 @@ app.post('/webhook', (req, res) => {
       .createHmac('sha256', process.env.CASHFREE_SECRET_KEY)
       .update(signatureString)
       .digest('base64');
-
+    console.log('[Webhook] Received:', { headers: req.headers, body: req.body });
     if (signature === expectedSignature) {
       const eventType = req.body.type;
       const data = req.body.data;
 
+      console.log('[Webhook] Signature valid. Event:', eventType);
       if (eventType === 'PAYMENT_SUCCESS_WEBHOOK') {
         const orderId = data.order.order_id;
         console.log('Payment webhook received for order:', orderId);
-        
+
         paymentStatuses.set(orderId, {
           status: 'PAID',
           orderData: data.order,
@@ -209,6 +207,31 @@ app.post('/webhook', (req, res) => {
     }
   } catch (error) {
     console.error('Webhook error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Test endpoint to manually POST webhook payload for debugging
+app.post('/webhook/test', (req, res) => {
+  try {
+    console.log('[Webhook Test] Received:', req.body);
+    // Simulate a successful payment webhook
+    const eventType = req.body.type || 'PAYMENT_SUCCESS_WEBHOOK';
+    const data = req.body.data || {};
+    if (eventType === 'PAYMENT_SUCCESS_WEBHOOK' && data.order && data.order.order_id) {
+      const orderId = data.order.order_id;
+      paymentStatuses.set(orderId, {
+        status: 'PAID',
+        orderData: data.order,
+        paymentData: data.payment,
+        updatedAt: Date.now()
+      });
+      console.log('[Webhook Test] Payment status updated for order:', orderId);
+      return res.json({ status: 'ok', test: true });
+    }
+    res.json({ status: 'received', test: true });
+  } catch (error) {
+    console.error('[Webhook Test] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
