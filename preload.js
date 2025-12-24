@@ -65,6 +65,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDeviceId: () => ipcRenderer.invoke('get-device-id'),
   // Get Cashfree ENV
   getCashfreeEnv: () => ipcRenderer.invoke('get-cashfree-env'),
+  // Get backend base (local vs hosted)
+  getBackendBase: () => ipcRenderer.invoke('get-backend-base'),
   // Set Device ID
   setDeviceId: (newId) => ipcRenderer.invoke('set-device-id', newId),
   
