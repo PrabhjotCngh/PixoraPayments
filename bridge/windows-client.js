@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 require('dotenv').config();
+log('Bridge client starting...');
 
 // Logger with IST timestamps (trimmed by default)
 function ts() {
@@ -17,8 +18,8 @@ function log(msg) {
   const isVerbose = v === 'true' || v === '1' || v === 'debug';
   const important = /error|failed|not found|ws close|ws error|device id update|credit reset|consumed paid credit/i.test(String(msg));
   if (!isVerbose && !important) return;
-  try { fs.appendFileSync('bridge-debug.log', `${ts()} ${msg}\n`); } catch (_) {}
-  try { console.log(msg); } catch (_) {}
+  try { fs.appendFileSync('bridge-debug.log', `${ts()} ${msg}\n`); } catch (_) { }
+  try { console.log(msg); } catch (_) { }
 }
 
 // Resolve Pixora exe dynamically
@@ -40,7 +41,7 @@ function resolvePixoraExe() {
     const norm = path.normalize(p);
     if (seen.has(norm)) continue;
     seen.add(norm);
-    try { if (fs.existsSync(norm)) return norm; } catch (_) {}
+    try { if (fs.existsSync(norm)) return norm; } catch (_) { }
   }
   return candidates[0] || 'PixoraPayments.exe';
 }
@@ -52,7 +53,7 @@ function getStateFilePath() {
   try {
     const base = process.env.APPDATA || process.env.LOCALAPPDATA || process.cwd();
     const dir = path.join(base, 'PixoraPayments');
-    try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+    try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) { }
     return path.join(dir, 'state.json');
   } catch (_) {
     return path.join(process.cwd(), 'state.json');
@@ -65,7 +66,7 @@ function readState() {
       const raw = String(fs.readFileSync(STATE_FILE, 'utf8'));
       return JSON.parse(raw);
     }
-  } catch (_) {}
+  } catch (_) { }
   return { hasCredit: false, lastPaidAt: 0, creditPendingSession: false, currentSession: null };
 }
 function writeState(state) {
@@ -101,12 +102,12 @@ const eventToState = {
   session_end: 'ended'
 };
 const allowedTransitions = {
-  started: new Set(['countdown_start','capture_start','session_end']),
-  countdown: new Set(['countdown','capture_start','session_end']),
-  capturing: new Set(['file_download','processing_start','session_end']),
-  downloading: new Set(['file_download','processing_start','sharing_screen','printing','file_upload','session_end']),
-  processing: new Set(['sharing_screen','printing','file_upload','session_end']),
-  sharing: new Set(['printing','file_upload','session_end']),
+  started: new Set(['countdown_start', 'capture_start', 'session_end']),
+  countdown: new Set(['countdown', 'capture_start', 'session_end']),
+  capturing: new Set(['file_download', 'processing_start', 'session_end']),
+  downloading: new Set(['file_download', 'processing_start', 'sharing_screen', 'printing', 'file_upload', 'session_end']),
+  processing: new Set(['sharing_screen', 'printing', 'file_upload', 'session_end']),
+  sharing: new Set(['printing', 'file_upload', 'session_end']),
   printing: new Set(['session_end']),
   uploading: new Set(['session_end']),
   ended: new Set([])
@@ -181,7 +182,7 @@ function launchPixora() {
           [Win32]::SetForegroundWindow($hPix)
       }
     `;
-    const ps = spawn('powershell.exe', ['-NoProfile','-ExecutionPolicy','Bypass','-Command', psScript], { windowsHide: true, env: { ...process.env, PIXORA_ALWAYS_ON_TOP: 'true' } });
+    const ps = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript], { windowsHide: true, env: { ...process.env, PIXORA_ALWAYS_ON_TOP: 'true' } });
     ps.stdout.on('data', (d) => { const v = d.toString().trim(); if (v) log(`PS: ${v}`); });
     ps.stderr.on('data', (d) => { const v = d.toString().trim(); if (v) log(`PS Err: ${v}`); });
   } catch (e) { log(`client launchPixora error: ${e}`); }
@@ -221,19 +222,19 @@ function getOrCreateDeviceId() {
   try {
     const envId = (process.env.DEVICE_ID || '').trim();
     if (envId) return envId;
-  } catch (_) {}
+  } catch (_) { }
   // Use %APPDATA%\PixoraPayments\device-id.txt (fallback to %LOCALAPPDATA%)
   try {
     const base = process.env.APPDATA || process.env.LOCALAPPDATA || process.cwd();
     const dir = path.join(base, 'PixoraPayments');
-    try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+    try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) { }
     const file = path.join(dir, 'device-id.txt');
     if (fs.existsSync(file)) {
       const v = String(fs.readFileSync(file, 'utf8')).trim();
       if (v) return v;
     }
     const id = crypto.randomUUID();
-    try { fs.writeFileSync(file, id, 'utf8'); } catch (_) {}
+    try { fs.writeFileSync(file, id, 'utf8'); } catch (_) { }
     return id;
   } catch (_) {
     try { return require('os').hostname(); } catch (_) { return 'unknown-device'; }
@@ -244,7 +245,7 @@ function setDeviceId(newId) {
   try {
     const base = process.env.APPDATA || process.env.LOCALAPPDATA || process.cwd();
     const dir = path.join(base, 'PixoraPayments');
-    try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+    try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) { }
     const file = path.join(dir, 'device-id.txt');
     fs.writeFileSync(file, String(newId || '').trim(), 'utf8');
     DEVICE_ID = String(newId || '').trim();
@@ -260,7 +261,7 @@ function connect() {
   ws.on('open', () => log('client ws open'));
   // Client heartbeat: send ping periodically to keep proxies happy
   const hb = setInterval(() => {
-    try { if (ws.readyState === WebSocket.OPEN) ws.ping(); } catch (_) {}
+    try { if (ws.readyState === WebSocket.OPEN) ws.ping(); } catch (_) { }
   }, 30000);
   ws.on('message', (data) => {
     try {
@@ -346,9 +347,9 @@ function connect() {
           const newId = String((msg && msg.payload && msg.payload.newId) || '').trim();
           if (newId) {
             setDeviceId(newId);
-            try { if (global.__ws && global.__ws.readyState === WebSocket.OPEN) global.__ws.close(4100, 'device id change'); } catch (_) {}
+            try { if (global.__ws && global.__ws.readyState === WebSocket.OPEN) global.__ws.close(4100, 'device id change'); } catch (_) { }
             // connect() will run again from close handler; if not, trigger a reconnect
-            setTimeout(() => { try { if (!global.__ws || global.__ws.readyState !== WebSocket.OPEN) connect(); } catch (_) {} }, 1000);
+            setTimeout(() => { try { if (!global.__ws || global.__ws.readyState !== WebSocket.OPEN) connect(); } catch (_) { } }, 1000);
           }
         } catch (e) { log(`client: set_device_id handling error: ${e}`); }
       }
@@ -356,7 +357,7 @@ function connect() {
       log(`client msg parse error: ${e}`);
     }
   });
-  ws.on('close', () => { log('client ws close; reconnecting in 3s'); try { clearInterval(hb); } catch (_) {}; setTimeout(connect, 3000); });
+  ws.on('close', () => { log('client ws close; reconnecting in 3s'); try { clearInterval(hb); } catch (_) { }; setTimeout(connect, 3000); });
   ws.on('error', (err) => log(`client ws error: ${err}`));
 }
 
