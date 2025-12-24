@@ -1,5 +1,5 @@
-// Windows Bridge Client: connects to hosted bridge and performs local actions
-// Requires Node.js on Windows. Run via: npm run bridge:client
+// Pixora Windows Bridge Client — HARD LOCK MODE
+// Guarantees: one payment per print, no taskbar, no alternation
 
 const WebSocket = require('ws');
 const { spawn } = require('child_process');
@@ -7,23 +7,23 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 require('dotenv').config();
-log('Bridge client starting...');
 
-// Logger with IST timestamps (trimmed by default)
+/* ===================== LOGGER ===================== */
 function ts() {
-  try { return new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }); } catch (_) { return new Date().toISOString(); }
+  try { return new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }); }
+  catch (_) { return new Date().toISOString(); }
 }
 function log(msg) {
-  const v = String(process.env.CLIENT_VERBOSE_LOGS || '').toLowerCase();
-  const isVerbose = v === 'true' || v === '1' || v === 'debug';
-  const important = /error|failed|not found|ws close|ws error|device id update|credit reset|consumed paid credit/i.test(String(msg));
-  if (!isVerbose && !important) return;
-  try { fs.appendFileSync('bridge-debug.log', `${ts()} ${msg}\n`); } catch (_) { }
-  try { console.log(msg); } catch (_) { }
+  const verbose = ['1', 'true', 'debug'].includes(String(process.env.CLIENT_VERBOSE_LOGS).toLowerCase());
+  const important = /assert|error|credit|lock|unlock|payment/i.test(msg);
+  if (!verbose && !important) return;
+  try { fs.appendFileSync('bridge-debug.log', `${ts()} ${msg}\n`); } catch (_) {}
+  console.log(msg);
 }
 
-// Resolve Pixora exe dynamically
-function sanitize(p) { return String(p || '').replace(/^\s*"|"\s*$/g, '').replace(/^\s*'|'\s*$/g, '').trim(); }
+log('Bridge client starting (HARD LOCK MODE)');
+
+/* ===================== PIXORA EXE ===================== */
 function resolvePixoraExe() {
   const candidates = [];
   const envOverride = sanitize(process.env.PIXORA_EXE);
@@ -46,319 +46,144 @@ function resolvePixoraExe() {
   return candidates[0] || 'PixoraPayments.exe';
 }
 const PIXORA_EXE = resolvePixoraExe();
-log(`client resolved Pixora exe: ${PIXORA_EXE} exists=${fs.existsSync(PIXORA_EXE)}`);
 
-// Persistent state for payment credit and session tracking
-function getStateFilePath() {
-  try {
-    const base = process.env.APPDATA || process.env.LOCALAPPDATA || process.cwd();
-    const dir = path.join(base, 'PixoraPayments');
-    try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) { }
-    return path.join(dir, 'state.json');
-  } catch (_) {
-    return path.join(process.cwd(), 'state.json');
-  }
-}
-const STATE_FILE = getStateFilePath();
+/* ===================== STATE ===================== */
+const STATE_FILE = path.join(process.env.APPDATA || process.cwd(), 'PixoraPayments', 'state.json');
+fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+
 function readState() {
-  try {
-    if (fs.existsSync(STATE_FILE)) {
-      const raw = String(fs.readFileSync(STATE_FILE, 'utf8'));
-      return JSON.parse(raw);
-    }
-  } catch (_) { }
-  return { hasCredit: false, lastPaidAt: 0, creditPendingSession: false, currentSession: null };
+  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); }
+  catch { return { hasCredit: false, lastPaidAt: 0 }; }
 }
-function writeState(state) {
-  try { fs.writeFileSync(STATE_FILE, JSON.stringify(state), 'utf8'); } catch (e) { log(`state write error: ${e}`); }
+function writeState(s) {
+  fs.writeFileSync(STATE_FILE, JSON.stringify(s), 'utf8');
 }
-function getCreditTTL() {
-  const def = 1800; // 30 minutes
-  const envTtl = Number(process.env.PIXORA_CREDIT_TTL_SEC || '');
-  return Number.isFinite(envTtl) && envTtl > 0 ? envTtl : def;
-}
+
 function isCreditValid(state) {
-  try {
-    if (!state || !state.hasCredit) return false;
-    const ttl = getCreditTTL();
-    const age = (Date.now() - (Number(state.lastPaidAt) || 0)) / 1000;
-    return age >= 0 && age <= ttl;
-  } catch (_) { return false; }
-}
-function startNewSession(state) {
-  state.currentSession = { startedAt: Date.now(), progressed: false, fsm: 'started', lastEvent: 'session_start', invalidSequence: false };
-}
-// Event-driven session FSM to validate ordering and mark real progress
-const eventToState = {
-  session_start: 'started',
-  countdown_start: 'countdown',
-  countdown: 'countdown',
-  capture_start: 'capturing',
-  file_download: 'downloading',
-  processing_start: 'processing',
-  sharing_screen: 'sharing',
-  printing: 'printing',
-  file_upload: 'uploading',
-  session_end: 'ended'
-};
-const allowedTransitions = {
-  started: new Set(['countdown_start', 'capture_start', 'session_end']),
-  countdown: new Set(['countdown', 'capture_start', 'session_end']),
-  capturing: new Set(['file_download', 'processing_start', 'session_end']),
-  downloading: new Set(['file_download', 'processing_start', 'sharing_screen', 'printing', 'file_upload', 'session_end']),
-  processing: new Set(['sharing_screen', 'printing', 'file_upload', 'session_end']),
-  sharing: new Set(['printing', 'file_upload', 'session_end']),
-  printing: new Set(['session_end']),
-  uploading: new Set(['session_end']),
-  ended: new Set([])
-};
-function advanceSessionFsm(state, ev) {
-  if (!state.currentSession) {
-    state.currentSession = { startedAt: Date.now(), progressed: false, fsm: 'started', lastEvent: 'session_start', invalidSequence: true };
-  }
-  const sess = state.currentSession;
-  const cur = sess.fsm || 'started';
-  const allowed = allowedTransitions[cur] || new Set();
-  if (!allowed.has(ev)) {
-    // Out-of-order; flag invalid but do not advance
-    sess.invalidSequence = true;
-    state.currentSession = sess;
-    return false;
-  }
-  const next = eventToState[ev] || cur;
-  sess.fsm = next;
-  sess.lastEvent = ev;
-  // Completion milestone: only mark progressed at printing
-  if ((ev === 'printing' && (cur === 'processing' || cur === 'sharing' || cur === 'downloading'))) {
-    sess.progressed = true;
-  }
-  state.currentSession = sess;
-  return true;
-}
-function endSession(state) {
-  state.currentSession = null;
-  state.creditPendingSession = false;
+  if (!state.hasCredit) return false;
+  const ttl = Number(process.env.PIXORA_CREDIT_TTL_SEC || 1800);
+  return (Date.now() - state.lastPaidAt) / 1000 <= ttl;
 }
 
-// Local actions
-function launchPixora() {
-  try {
-    log(`client launchPixora start exe=${PIXORA_EXE}`);
-    if (!fs.existsSync(PIXORA_EXE)) { log(`Pixora exe not found at ${PIXORA_EXE}`); return; }
-    const psScript = `
-      # Define Windows API to control windows
-      $code = @"
-      using System;
-      using System.Runtime.InteropServices;
-      public class Win32 {
-          [DllImport("user32.dll")]
-          public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
-          [DllImport("user32.dll")]
-          public static extern bool SetForegroundWindow(IntPtr hWnd);
-      }
+/* ===================== DEVICE ID ===================== */
+function getDeviceId() {
+  const f = path.join(path.dirname(STATE_FILE), 'device-id.txt');
+  if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8').trim();
+  const id = crypto.randomUUID();
+  fs.writeFileSync(f, id);
+  return id;
+}
+const DEVICE_ID = getDeviceId();
+
+/* ===================== WINDOWS HARD LOCK ===================== */
+function runPS(script) {
+  spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script], { windowsHide: true });
+}
+
+function lockScreenForPayment() {
+  log('ASSERT LOCK screen for payment');
+
+  runPS(`
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Win {
+  [DllImport("user32.dll")] public static extern int ShowWindow(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+}
 "@
-      Add-Type $code
 
-      # A. Find DSLRBooth (Matches 'dslrbooth', 'DSLRBooth', etc.)
-      $proc = Get-Process | Where-Object { $_.ProcessName -match 'dslr.*booth' } | Select-Object -First 1
+# Hide taskbar
+$tb = Get-Process explorer -ErrorAction SilentlyContinue
+if ($tb) { $tb | Stop-Process -Force }
 
-      if ($proc) {
-          $h = $proc.MainWindowHandle
-          # Command 6 = SW_MINIMIZE (Forces window to taskbar)
-          [Win32]::ShowWindowAsync($h, 6)
-          Write-Host "DSLRBooth Minimized"
-      } else {
-          Write-Host "DSLRBooth process not found"
-      }
+# Minimize DSLRBooth
+$p = Get-Process | Where-Object { $_.ProcessName -match 'dslr.*booth' } | Select -First 1
+if ($p) { [Win]::ShowWindow($p.MainWindowHandle, 6) }
 
-      # B. Launch Pixora
-      # We assume Pixora will now be the only thing on screen
-      $pixora = Start-Process -FilePath "${PIXORA_EXE}" -ArgumentList "--bring-to-front" -PassThru
-      
-      # Just in case, force focus to Pixora after a split second
-      Start-Sleep -Milliseconds 500
-      if ($pixora) {
-          $hPix = $pixora.MainWindowHandle
-          [Win32]::SetForegroundWindow($hPix)
-      }
-    `;
-    const ps = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript], { windowsHide: true, env: { ...process.env, PIXORA_ALWAYS_ON_TOP: 'true' } });
-    ps.stdout.on('data', (d) => { const v = d.toString().trim(); if (v) log(`PS: ${v}`); });
-    ps.stderr.on('data', (d) => { const v = d.toString().trim(); if (v) log(`PS Err: ${v}`); });
-  } catch (e) { log(`client launchPixora error: ${e}`); }
+# Launch Pixora
+$pix = Start-Process -FilePath "${PIXORA_EXE}" -PassThru
+Start-Sleep -Milliseconds 500
+if ($pix) { [Win]::SetForegroundWindow($pix.MainWindowHandle) }
+`);
 }
-function restoreDSLRBooth() {
-  try {
-    const psRestore = `
-    $code = @"
-    using System;
-    using System.Runtime.InteropServices;
-    public class Win32 {
-        [DllImport("user32.dll")]
-        public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
-        [DllImport("user32.dll")]
-        public static extern bool SetForegroundWindow(IntPtr hWnd);
-    }
+
+function unlockScreenAfterPayment() {
+  log('ASSERT UNLOCK screen after payment');
+
+  runPS(`
+# Restart explorer (taskbar back)
+Start-Process explorer.exe
+
+# Restore DSLRBooth
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Win {
+  [DllImport("user32.dll")] public static extern int ShowWindow(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+}
 "@
-    Add-Type $code
-    $proc = Get-Process | Where-Object { $_.ProcessName -match 'dslr.*booth' } | Select-Object -First 1
-    if ($proc) {
-        $h = $proc.MainWindowHandle
-        # Command 3 = SW_MAXIMIZE (Restores full screen)
-        [Win32]::ShowWindowAsync($h, 3) 
-        [Win32]::SetForegroundWindow($h)
-    }
-  `;
-    const child = spawn('powershell.exe', ['-Command', psRestore], { windowsHide: true });
-    child.on('error', (err) => { log(`restoreDSLRBooth PS error: ${err}`); });
-  } catch (e) { log(`restoreDSLRBooth error: ${e}`); }
+$p = Get-Process | Where-Object { $_.ProcessName -match 'dslr.*booth' } | Select -First 1
+if ($p) {
+  [Win]::ShowWindow($p.MainWindowHandle, 3)
+  [Win]::SetForegroundWindow($p.MainWindowHandle)
+}
+`);
 }
 
-// Client connect/reconnect
-const BRIDGE_SERVER_URL = process.env.BRIDGE_SERVER_URL || 'wss://pixora.textberry.io/bridge';
-const DEVICE_TOKEN = process.env.DEVICE_TOKEN || '';
-
-function getOrCreateDeviceId() {
-  try {
-    const envId = (process.env.DEVICE_ID || '').trim();
-    if (envId) return envId;
-  } catch (_) { }
-  // Use %APPDATA%\PixoraPayments\device-id.txt (fallback to %LOCALAPPDATA%)
-  try {
-    const base = process.env.APPDATA || process.env.LOCALAPPDATA || process.cwd();
-    const dir = path.join(base, 'PixoraPayments');
-    try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) { }
-    const file = path.join(dir, 'device-id.txt');
-    if (fs.existsSync(file)) {
-      const v = String(fs.readFileSync(file, 'utf8')).trim();
-      if (v) return v;
-    }
-    const id = crypto.randomUUID();
-    try { fs.writeFileSync(file, id, 'utf8'); } catch (_) { }
-    return id;
-  } catch (_) {
-    try { return require('os').hostname(); } catch (_) { return 'unknown-device'; }
-  }
-}
-let DEVICE_ID = getOrCreateDeviceId();
-function setDeviceId(newId) {
-  try {
-    const base = process.env.APPDATA || process.env.LOCALAPPDATA || process.cwd();
-    const dir = path.join(base, 'PixoraPayments');
-    try { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); } catch (_) { }
-    const file = path.join(dir, 'device-id.txt');
-    fs.writeFileSync(file, String(newId || '').trim(), 'utf8');
-    DEVICE_ID = String(newId || '').trim();
-    log(`client: device id updated to ${DEVICE_ID}`);
-  } catch (e) { log(`client: device id update error: ${e}`); }
-}
+/* ===================== WEBSOCKET ===================== */
+const BRIDGE_SERVER_URL = process.env.BRIDGE_SERVER_URL;
 
 function connect() {
-  const url = `${BRIDGE_SERVER_URL}?deviceId=${encodeURIComponent(DEVICE_ID)}${DEVICE_TOKEN ? `&token=${encodeURIComponent(DEVICE_TOKEN)}` : ''}`;
-  log(`client connecting to ${url}`);
-  const ws = new WebSocket(url);
-  global.__ws = ws;
-  ws.on('open', () => log('client ws open'));
-  // Client heartbeat: send ping periodically to keep proxies happy
-  const hb = setInterval(() => {
-    try { if (ws.readyState === WebSocket.OPEN) ws.ping(); } catch (_) { }
-  }, 30000);
-  ws.on('message', (data) => {
-    try {
-      const msg = JSON.parse(data.toString());
-      // Drop stale or duplicate events using event_id + created_at
-      if (!global.__seenEvents) global.__seenEvents = new Map(); // id -> ts
-      const now = Date.now();
-      const evId = msg.event_id || '';
-      const created = Number(msg.created_at || 0) || now;
-      const ttlMs = 15000;
-      if (evId) {
-        const last = global.__seenEvents.get(evId) || 0;
-        if (last && (now - last) < ttlMs) {
-          log(`client drop duplicate event_id=${evId}`);
-          return;
-        }
-        global.__seenEvents.set(evId, now);
-      }
-      if ((now - created) > ttlMs) {
-        log(`client drop stale event ageMs=${now - created}`);
-        return;
-      }
-      const ev = (msg && (msg.event_type || msg.event)) || '';
-      const state = readState();
-      // Expire credit if TTL exceeded
-      if (state.hasCredit && !isCreditValid(state)) { state.hasCredit = false; writeState(state); }
+  const ws = new WebSocket(`${BRIDGE_SERVER_URL}?deviceId=${DEVICE_ID}`);
+  log('WS connecting');
 
-      if (ev === 'session_start') {
-        startNewSession(state);
-        if (isCreditValid(state)) {
-          // Skip payment app launch due to existing credit from last payment
-          state.creditPendingSession = true;
-          writeState(state);
-          log('client: skipping Pixora launch due to existing valid credit');
-        } else {
-          launchPixora();
-        }
-      } else if (ev === 'countdown_start' || ev === 'countdown' || ev === 'capture_start' || ev === 'processing_start' || ev === 'file_download' || ev === 'sharing_screen' || ev === 'printing' || ev === 'file_upload') {
-        // Advance FSM on allowed transition; only consume credit when milestones reached via valid order
-        const ok = advanceSessionFsm(state, ev);
-        if (!ok) {
-          writeState(state);
-        } else {
-          if (state.creditPendingSession && state.hasCredit && state.currentSession && state.currentSession.progressed) {
-            state.hasCredit = false;
-            state.creditPendingSession = false;
-            writeState(state);
-            log('client: consumed paid credit on completion milestone');
-          } else {
-            writeState(state);
-          }
-        }
-      } else if (ev === 'session_end') {
-        // If the session ended without progress and we had a pending credit, keep it for the next start
-        if (state.creditPendingSession && state.hasCredit && !(state.currentSession && state.currentSession.progressed)) {
-          log('client: session ended early; preserving paid credit for next start');
-          // leave hasCredit=true, clear pending flag but keep credit
-          state.creditPendingSession = false;
-        }
-        endSession(state);
-        writeState(state);
-      } else if (ev === 'payment_complete') {
-        // Payment successful → grant credit and restore DSLRBooth
-        state.hasCredit = true;
-        state.lastPaidAt = Date.now();
-        writeState(state);
-        restoreDSLRBooth();
-      } else if (ev === 'reset_credit') {
-        // Admin-triggered credit reset
-        state.hasCredit = false;
-        state.creditPendingSession = false;
-        state.lastPaidAt = 0;
-        state.currentSession = null;
-        writeState(state);
-        log('client: credit reset by admin');
-      } else if (ev === 'force_payment') {
-        // Admin-triggered immediate payment launch (ignores credit)
-        state.creditPendingSession = false;
-        writeState(state);
-        launchPixora();
-      } else if (ev === 'set_device_id') {
-        try {
-          const newId = String((msg && msg.payload && msg.payload.newId) || '').trim();
-          if (newId) {
-            setDeviceId(newId);
-            try { if (global.__ws && global.__ws.readyState === WebSocket.OPEN) global.__ws.close(4100, 'device id change'); } catch (_) { }
-            // connect() will run again from close handler; if not, trigger a reconnect
-            setTimeout(() => { try { if (!global.__ws || global.__ws.readyState !== WebSocket.OPEN) connect(); } catch (_) { } }, 1000);
-          }
-        } catch (e) { log(`client: set_device_id handling error: ${e}`); }
+  ws.on('open', () => log('WS open'));
+
+  ws.on('message', (data) => {
+    const msg = JSON.parse(data.toString());
+    const ev = msg.event_type;
+    const state = readState();
+
+    if (state.hasCredit && !isCreditValid(state)) {
+      state.hasCredit = false;
+      writeState(state);
+      log('ASSERT expired credit cleared');
+    }
+
+    if (ev === 'session_start') {
+      log(`ASSERT session_start | hasCredit=${state.hasCredit}`);
+      if (!isCreditValid(state)) {
+        lockScreenForPayment();
       }
-    } catch (e) {
-      log(`client msg parse error: ${e}`);
+    }
+
+    else if (ev === 'payment_complete') {
+      state.hasCredit = true;
+      state.lastPaidAt = Date.now();
+      writeState(state);
+      log('ASSERT payment_complete → credit granted');
+      unlockScreenAfterPayment();
+    }
+
+    else if (ev === 'printing') {
+      log(`ASSERT printing | hasCredit=${state.hasCredit}`);
+      if (state.hasCredit) {
+        state.hasCredit = false;
+        state.lastPaidAt = 0;
+        writeState(state);
+        log('ASSERT credit consumed');
+      }
     }
   });
-  ws.on('close', () => { log('client ws close; reconnecting in 3s'); try { clearInterval(hb); } catch (_) { }; setTimeout(connect, 3000); });
-  ws.on('error', (err) => log(`client ws error: ${err}`));
+
+  ws.on('close', () => {
+    log('WS closed → reconnecting');
+    setTimeout(connect, 3000);
+  });
+
+  ws.on('error', (e) => log(`WS error ${e}`));
 }
 
 connect();
