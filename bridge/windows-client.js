@@ -91,14 +91,15 @@ Add-Type @"
 using System;
 using System.Runtime.InteropServices;
 public class Win {
-  [DllImport("user32.dll")] public static extern int ShowWindow(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")] public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
 }
 "@
 
-# Hide taskbar
-$tb = Get-Process explorer -ErrorAction SilentlyContinue
-if ($tb) { $tb | Stop-Process -Force }
+# Hide taskbar safely
+$tb = [Win]::FindWindow("Shell_TrayWnd", $null)
+if ($tb -ne [IntPtr]::Zero) { [Win]::ShowWindow($tb, 0) }
 
 # Minimize DSLRBooth
 $p = Get-Process | Where-Object { $_.ProcessName -match 'dslr.*booth' } | Select -First 1
@@ -115,18 +116,21 @@ function unlockScreenAfterPayment() {
   log('ASSERT UNLOCK screen after payment');
 
   runPS(`
-# Restart explorer (taskbar back)
-Start-Process explorer.exe
-
-# Restore DSLRBooth
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
 public class Win {
-  [DllImport("user32.dll")] public static extern int ShowWindow(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")] public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
 }
 "@
+
+# Restore taskbar
+$tb = [Win]::FindWindow("Shell_TrayWnd", $null)
+if ($tb -ne [IntPtr]::Zero) { [Win]::ShowWindow($tb, 5) }
+
+# Restore DSLRBooth
 $p = Get-Process | Where-Object { $_.ProcessName -match 'dslr.*booth' } | Select -First 1
 if ($p) {
   [Win]::ShowWindow($p.MainWindowHandle, 3)
