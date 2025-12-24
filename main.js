@@ -7,7 +7,7 @@ const crypto = require('crypto');
 require('dotenv').config();
 
 // Allow autoplay with sound without user gesture (Chromium policy)
-try { app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required'); } catch (e) {}
+try { app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required'); } catch (e) { }
 
 let mainWindow;
 let serverProcess;
@@ -49,7 +49,7 @@ function createWindow() {
 
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(false);
-  mainWindow.webContents.openDevTools();
+  //mainWindow.webContents.openDevTools();
 
   // Respect configured window behavior and show the window
   mainWindow.once('ready-to-show', () => {
@@ -68,14 +68,14 @@ function createWindow() {
           mainWindow.show();
           mainWindow.focus();
           // Temporary always-on-top trick to force foreground activation on Windows
-          try { mainWindow.setAlwaysOnTop(true, 'screen-saver'); } catch (e) { try { mainWindow.setAlwaysOnTop(true); } catch (e) {} }
+          try { mainWindow.setAlwaysOnTop(true, 'screen-saver'); } catch (e) { try { mainWindow.setAlwaysOnTop(true); } catch (e) { } }
           setTimeout(() => {
-            try { mainWindow.setAlwaysOnTop(!!winCfg.alwaysOnTop); } catch (e) {}
+            try { mainWindow.setAlwaysOnTop(!!winCfg.alwaysOnTop); } catch (e) { }
           }, 500);
         } catch (e) {
           // best-effort - log and continue
           console.warn('bringToFront failed:', e);
-          try { fs.appendFileSync('debug.log', `${new Date().toISOString()} bringToFront error: ${e}\n`); } catch (ee) {}
+          try { fs.appendFileSync('debug.log', `${new Date().toISOString()} bringToFront error: ${e}\n`); } catch (ee) { }
         }
       }
       mainWindow.show();
@@ -97,10 +97,10 @@ function startWebhookServer() {
 
   serverProcess.on('error', (err) => {
     console.error('Failed to start webhook server:', err);
-    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Failed to start webhook server: ${err}\n`); } catch (e) {}
+    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Failed to start webhook server: ${err}\n`); } catch (e) { }
   });
 
-  try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Webhook server spawned (pid=${serverProcess.pid})\n`); } catch (e) {}
+  try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Webhook server spawned (pid=${serverProcess.pid})\n`); } catch (e) { }
 }
 
 // Get configuration
@@ -147,7 +147,7 @@ ipcMain.handle('get-device-id', async () => {
   try {
     const envId = (process.env.DEVICE_ID || '').trim();
     if (envId) return envId;
-  } catch (_) {}
+  } catch (_) { }
   try {
     const dir = app.getPath('userData');
     const file = path.join(dir, 'device-id.txt');
@@ -156,7 +156,7 @@ ipcMain.handle('get-device-id', async () => {
       if (v) return v;
     }
     const id = crypto.randomUUID();
-    try { fs.writeFileSync(file, id, 'utf8'); } catch (_) {}
+    try { fs.writeFileSync(file, id, 'utf8'); } catch (_) { }
     return id;
   } catch (_) {
     try { return os.hostname(); } catch (_) { return 'unknown-device'; }
@@ -183,8 +183,8 @@ ipcMain.handle('bring-to-front', async () => {
   try {
     mainWindow.show();
     mainWindow.focus();
-    try { mainWindow.setAlwaysOnTop(true, 'screen-saver'); } catch (e) { try { mainWindow.setAlwaysOnTop(true); } catch (e) {} }
-    setTimeout(() => { try { mainWindow.setAlwaysOnTop(!!winCfg.alwaysOnTop); } catch (e) {} }, 400);
+    try { mainWindow.setAlwaysOnTop(true, 'screen-saver'); } catch (e) { try { mainWindow.setAlwaysOnTop(true); } catch (e) { } }
+    setTimeout(() => { try { mainWindow.setAlwaysOnTop(!!winCfg.alwaysOnTop); } catch (e) { } }, 400);
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
@@ -193,15 +193,15 @@ ipcMain.handle('bring-to-front', async () => {
 
 // App lifecycle
 app.whenReady().then(() => {
-    const useLocal = (process.env.USE_LOCAL_BACKEND || '').trim().toLowerCase();
-    if (useLocal === 'true' || useLocal === '1') {
-      console.log('Starting local backend (USE_LOCAL_BACKEND enabled)');
-      try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Starting local backend (USE_LOCAL_BACKEND)\n`); } catch (e) {}
-      startWebhookServer();
-    } else {
-      console.log('Skipping local backend spawn (using hosted APIs)');
-      try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Skipping local backend spawn (hosted APIs)\n`); } catch (e) {}
-    }
+  const useLocal = (process.env.USE_LOCAL_BACKEND || '').trim().toLowerCase();
+  if (useLocal === 'true' || useLocal === '1') {
+    console.log('Starting local backend (USE_LOCAL_BACKEND enabled)');
+    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Starting local backend (USE_LOCAL_BACKEND)\n`); } catch (e) { }
+    startWebhookServer();
+  } else {
+    console.log('Skipping local backend spawn (using hosted APIs)');
+    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Skipping local backend spawn (hosted APIs)\n`); } catch (e) { }
+  }
   createWindow();
 
   app.on('activate', function () {
