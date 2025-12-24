@@ -23,7 +23,7 @@
 
         async function checkPayment(orderId) {
             try {
-                const response = await window.electronAPI.checkPayment(orderId);
+                const response = await fetch(`/api/check-payment/${encodeURIComponent(orderId)}`);
                 // Check amount as well to avoid false positives
                 const expectedAmount = config.payment.amountInRupees;
                 const paidAmount = response.orderAmount;

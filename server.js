@@ -11,6 +11,7 @@ app.use(express.json());
 
 // Serve static files from src directory
 app.use(express.static(path.join(__dirname, 'src')));
+console.log('Serving static from:', path.join(__dirname, 'src'));
 
 // Curl-style request/response logging to console
 app.use((req, res, next) => {
