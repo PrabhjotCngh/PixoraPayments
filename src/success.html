@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Payment Successful</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="success-screen" style="background-image: url('../assets/payment_background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+
+<body class="success-screen"
+  style="background-image: url('../assets/background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
   <div class="container">
     <div class="success-icon">
       <svg width="100" height="100" viewBox="0 0 100 100">
@@ -14,10 +17,10 @@
         <path d="M30 50 L45 65 L70 35" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" />
       </svg>
     </div>
-    
+
     <h1 class="title success-title">Payment Successful!</h1>
     <p class="message">Thank you for your payment. Launching photobooth...</p>
-    
+
     <div class="countdown">
       <span id="countdown">3</span>
     </div>
@@ -25,25 +28,26 @@
 
   <script>
     let countdown = 3;
-    
+
     window.addEventListener('DOMContentLoaded', async () => {
       const config = await window.electronAPI.getConfig();
       const duration = config.screens.successDuration / 1000;
       countdown = duration;
-      
+
       document.getElementById('countdown').textContent = countdown;
-      
+
       const interval = setInterval(async () => {
         countdown--;
         document.getElementById('countdown').textContent = countdown;
-        
+
         if (countdown <= 0) {
           clearInterval(interval);
-          try { await window.electronAPI.notifyPaymentComplete(); } catch (_) {}
-          try { await window.electronAPI.quitApp(); } catch (_) {}
+          try { await window.electronAPI.notifyPaymentComplete(); } catch (_) { }
+          try { await window.electronAPI.quitApp(); } catch (_) { }
         }
       }, 1000);
     });
   </script>
 </body>
+
 </html>
