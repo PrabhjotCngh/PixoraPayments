@@ -90,10 +90,22 @@ function createWindow() {
 
 // Start Express server for webhooks
 function startWebhookServer() {
-  serverProcess = spawn('node', ['server.js'], {
-    cwd: __dirname,
-    stdio: 'inherit'
-  });
+  try {
+    const inspectFlag = String(process.env.PIXORA_INSPECT_SERVER || '').toLowerCase();
+    const args = [];
+    if (inspectFlag === 'true' || inspectFlag === '1') {
+      args.push('--inspect=9229');
+    }
+    args.push('server.js');
+
+    // Use the current Node executable to avoid PATH issues
+    serverProcess = spawn(process.execPath || 'node', args, {
+      cwd: __dirname,
+      stdio: 'inherit'
+    });
+  } catch (e) {
+    console.error('Error while spawning webhook server:', e);
+  }
 
   serverProcess.on('error', (err) => {
     console.error('Failed to start webhook server:', err);

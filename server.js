@@ -41,11 +41,11 @@ app.use((req, res, next) => {
 
     res.on('finish', () => {
       let out = res.locals._respBody;
-      try { if (typeof out !== 'string') out = JSON.stringify(out); } catch (_) {}
+      try { if (typeof out !== 'string') out = JSON.stringify(out); } catch (_) { }
       if (out && out.length > 5000) out = out.slice(0, 5000) + '... [truncated]';
       console.log(`RESPONSE ${req.method} ${req.originalUrl} -> ${res.statusCode}${out ? `\n${out}` : ''}`);
     });
-  } catch (_) {}
+  } catch (_) { }
   next();
 });
 
@@ -54,21 +54,30 @@ app.use((req, res, next) => {
 // In-memory storage for payment statuses (for single machine use)
 const paymentStatuses = new Map();
 
+// Helper: environment + credentials diagnostics
+function getEnvInfo() {
+  const environment = process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox';
+  const cfgBase = appConfig && appConfig.cashfree && appConfig.cashfree.apiBase;
+  const apiBase = environment === 'production'
+    ? ((cfgBase && cfgBase.production) || 'https://api.cashfree.com/pg/orders')
+    : ((cfgBase && cfgBase.sandbox) || 'https://sandbox.cashfree.com/pg/orders');
+  const appIdPresent = Boolean(process.env.CASHFREE_APP_ID);
+  const secretPresent = Boolean(process.env.CASHFREE_SECRET_KEY);
+  const apiVersion = process.env.CASHFREE_API_VERSION || '2025-01-01';
+  return { environment, apiBase, appIdPresent, secretPresent, apiVersion };
+}
+
 // Create QR Code for UPI payment
 app.post('/api/create-qr', async (req, res) => {
   try {
     const { amount, description } = req.body;
     const orderId = `order_${Date.now()}`;
 
-    const getCashfreeOrdersBase = () => {
-      const isProd = process.env.CASHFREE_ENV === 'production';
-      const cfgBase = appConfig && appConfig.cashfree && appConfig.cashfree.apiBase;
-      if (isProd) return (cfgBase && cfgBase.production) || 'https://api.cashfree.com/pg/orders';
-      return (cfgBase && cfgBase.sandbox) || 'https://sandbox.cashfree.com/pg/orders';
-    };
-    const CASHFREE_API_URL = getCashfreeOrdersBase();
+    const isProd = process.env.CASHFREE_ENV === 'production';
+    const CASHFREE_API_URL = isProd
+      ? 'https://api.cashfree.com/pg/orders'
+      : 'https://sandbox.cashfree.com/pg/orders';
 
-    // Create Cashfree order via REST (axios)
     const cfResp = await axios.post(
       CASHFREE_API_URL,
       {
@@ -79,10 +88,6 @@ app.post('/api/create-qr', async (req, res) => {
         customer_details: {
           customer_id: `customer_${Date.now()}`,
           customer_phone: '9999999999'
-        },
-        order_meta: {
-          notify_url: `https://pixora.textberry.io/webhook`,
-          payment_methods: "upi"
         }
       },
       {
@@ -90,42 +95,45 @@ app.post('/api/create-qr', async (req, res) => {
           'Content-Type': 'application/json',
           'x-client-id': process.env.CASHFREE_APP_ID,
           'x-client-secret': process.env.CASHFREE_SECRET_KEY,
-          'x-api-version': process.env.CASHFREE_API_VERSION || '2025-01-01'
+          'x-api-version': '2023-08-01'
         }
       }
     );
 
     const data = cfResp.data;
 
-    // Prepare QR data for frontend
-    const qrData = {
-      id: orderId,
-      order_id: data.order_id || orderId,
+    res.json({
+      success: true,
+      order_id: data.order_id,
       payment_session_id: data.payment_session_id,
-      image_url: `${CASHFREE_API_URL}/${orderId}/qrcode`,
-      payment_link: data.payment_link,
-      env: process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox'
-    };
-
-    paymentStatuses.set(orderId, {
-      status: data.order_status || 'ACTIVE',
-      orderData: data,
-      amount: amount,
-      createdAt: Date.now()
+      env: isProd ? 'production' : 'sandbox'
     });
 
-    console.log('Cashfree order created (REST):', orderId);
-    res.json({ success: true, qrCode: qrData });
   } catch (error) {
-    const errPayload = error?.response?.data || { message: error.message };
-    console.error('Error creating QR (REST):', errPayload);
-    res.status(500).json({ success: false, error: 'Failed to generate QR', details: errPayload });
+    console.error(error?.response?.data || error.message);
+    res.status(500).json({ success: false });
   }
 });
 
 // Check payment status
 app.get('/api/check-payment/:id', async (req, res) => {
   try {
+    // Early validation: credentials must be present to query Cashfree
+    const { environment, apiBase, appIdPresent, secretPresent, apiVersion } = getEnvInfo();
+    if (!appIdPresent || !secretPresent) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cashfree credentials missing',
+        details: {
+          environment,
+          apiBase,
+          appIdPresent,
+          secretPresent,
+          apiVersion,
+          hint: 'Set CASHFREE_APP_ID and CASHFREE_SECRET_KEY in .env and restart the app/server'
+        }
+      });
+    }
     const { id } = req.params;
 
     // Check in-memory status first
@@ -143,7 +151,7 @@ app.get('/api/check-payment/:id', async (req, res) => {
     };
     const CASHFREE_API_BASE = getCashfreeOrdersBase();
 
-    const cfResp = await axios.get(`${CASHFREE_API_BASE}/${encodeURIComponent(id)}` , {
+    const cfResp = await axios.get(`${CASHFREE_API_BASE}/${encodeURIComponent(id)}`, {
       headers: {
         'x-client-id': process.env.CASHFREE_APP_ID,
         'x-client-secret': process.env.CASHFREE_SECRET_KEY,
@@ -179,6 +187,9 @@ app.post('/webhook', (req, res) => {
     const timestamp = req.headers['x-webhook-timestamp'];
     const body = JSON.stringify(req.body);
 
+    // Log every webhook request for debugging
+    console.log('[Webhook] Received:', { headers: req.headers, body: req.body });
+
     // Verify webhook signature (Cashfree uses HMAC SHA256)
     const signatureString = timestamp + body;
     const expectedSignature = crypto
@@ -190,10 +201,11 @@ app.post('/webhook', (req, res) => {
       const eventType = req.body.type;
       const data = req.body.data;
 
+      console.log('[Webhook] Signature valid. Event:', eventType);
+
       if (eventType === 'PAYMENT_SUCCESS_WEBHOOK') {
         const orderId = data.order.order_id;
-        console.log('Payment webhook received for order:', orderId);
-        
+        console.log('[Webhook] Payment webhook received for order:', orderId);
         paymentStatuses.set(orderId, {
           status: 'PAID',
           orderData: data.order,
@@ -204,11 +216,36 @@ app.post('/webhook', (req, res) => {
 
       res.json({ status: 'ok' });
     } else {
-      console.log('Invalid webhook signature');
-      res.status(400).json({ error: 'Invalid signature' });
+      console.log('[Webhook] Invalid signature. Expected:', expectedSignature, 'Received:', signature);
+      res.status(400).json({ error: 'Invalid signature', expectedSignature, receivedSignature: signature });
     }
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('[Webhook] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Test endpoint to manually POST webhook payload for debugging
+app.post('/webhook/test', (req, res) => {
+  try {
+    console.log('[Webhook Test] Received:', req.body);
+    // Simulate a successful payment webhook
+    const eventType = req.body.type || 'PAYMENT_SUCCESS_WEBHOOK';
+    const data = req.body.data || {};
+    if (eventType === 'PAYMENT_SUCCESS_WEBHOOK' && data.order && data.order.order_id) {
+      const orderId = data.order.order_id;
+      paymentStatuses.set(orderId, {
+        status: 'PAID',
+        orderData: data.order,
+        paymentData: data.payment,
+        updatedAt: Date.now()
+      });
+      console.log('[Webhook Test] Payment status updated for order:', orderId);
+      return res.json({ status: 'ok', test: true });
+    }
+    res.json({ status: 'received', test: true });
+  } catch (error) {
+    console.error('[Webhook Test] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
