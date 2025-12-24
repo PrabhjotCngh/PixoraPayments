@@ -87,8 +87,7 @@ app.post('/api/create-qr', async (req, res) => {
           customer_phone: '9999999999'
         },
         order_meta: {
-          return_url: 'https://pixora.textberry.io/thankyou.html?order_id=' + encodeURIComponent(orderId),
-          notify_url: `https://pixora.textberry.io/webhook`
+          return_url: 'https://pixora.textberry.io/thankyou.html?order_id=' + encodeURIComponent(orderId)
         }
       },
       {
@@ -172,48 +171,6 @@ app.get('/api/check-payment/:id', async (req, res) => {
     const errPayload = error?.response?.data || { message: error.message };
     console.error('Error checking payment (REST):', errPayload);
     res.status(500).json({ success: false, error: 'Failed to check payment', details: errPayload });
-  }
-});
-
-// Webhook endpoint for Cashfree notifications
-app.post('/webhook', (req, res) => {
-  try {
-    const signature = req.headers['x-webhook-signature'];
-    const timestamp = req.headers['x-webhook-timestamp'];
-    const body = JSON.stringify(req.body);
-
-    // Verify webhook signature (Cashfree uses HMAC SHA256)
-    const signatureString = timestamp + body;
-    const expectedSignature = crypto
-      .createHmac('sha256', process.env.CASHFREE_SECRET_KEY)
-      .update(signatureString)
-      .digest('base64');
-    console.log('[Webhook] Received:', { headers: req.headers, body: req.body });
-    if (signature === expectedSignature) {
-      const eventType = req.body.type;
-      const data = req.body.data;
-
-      console.log('[Webhook] Signature valid. Event:', eventType);
-      if (eventType === 'PAYMENT_SUCCESS_WEBHOOK') {
-        const orderId = data.order.order_id;
-        console.log('Payment webhook received for order:', orderId);
-
-        paymentStatuses.set(orderId, {
-          status: 'PAID',
-          orderData: data.order,
-          paymentData: data.payment,
-          updatedAt: Date.now()
-        });
-      }
-
-      res.json({ status: 'ok' });
-    } else {
-      console.log('Invalid webhook signature');
-      res.status(400).json({ error: 'Invalid signature' });
-    }
-  } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(500).json({ error: error.message });
   }
 });
 

@@ -6,7 +6,7 @@
   },
   "screens": {
     "successDuration": 3000,
-    "failureDuration": 3000,
+    "failureDuration": 50000,
     "paymentStatusPollMs": 3000
   },
   "assets": {
@@ -16,7 +16,7 @@
     "staticQrImage": "../assets/static_qr.png"
   },
   "bridge": {
-    "baseUrl": "https://pixora.textberry.io"      
+    "baseUrl": "https://pixora.textberry.io"
   },
   "cashfree": {
     "apiBase": {

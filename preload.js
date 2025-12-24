@@ -24,7 +24,7 @@ async function ensureBackendReady(timeoutMs = 4000) {
       await new Promise(r => setTimeout(r, delay));
       delay = Math.min(delay * 2, 600);
     }
-  } catch (_) {}
+  } catch (_) { }
   return false;
 }
 
@@ -43,10 +43,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
         if (cfg && cfg.bridge && cfg.bridge.baseUrl) {
           base = cfg.bridge.baseUrl;
         }
-      } catch (_) {}
+      } catch (_) { }
       // Include deviceId for targeted routing on the hosted bridge
       let deviceId = '';
-      try { deviceId = await ipcRenderer.invoke('get-device-id'); } catch (_) {}
+      try { deviceId = await ipcRenderer.invoke('get-device-id'); } catch (_) { }
       const ts = Date.now();
       const url = `${base}?event_type=payment_complete${deviceId ? `&deviceId=${encodeURIComponent(deviceId)}` : ''}&ts=${ts}&event_id=pc-${deviceId || 'unknown'}-${ts}`;
       await fetch(url);
@@ -55,10 +55,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return { success: false, error: e?.message };
     }
   },
-  
+
   // Get configuration
   getConfig: () => ipcRenderer.invoke('get-config'),
-  
+
   // Get Cashfree App ID
   getCashfreeAppId: () => ipcRenderer.invoke('get-cashfree-app-id'),
   // Get Device ID (optional external use)
@@ -67,12 +67,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCashfreeEnv: () => ipcRenderer.invoke('get-cashfree-env'),
   // Set Device ID
   setDeviceId: (newId) => ipcRenderer.invoke('set-device-id', newId),
-  
+
   // Payment APIs
   createQRCode: async (amount, description) => {
     const base = await ipcRenderer.invoke('get-backend-base');
     // Best-effort: wait briefly for backend health on first launch
-    try { await ensureBackendReady(); } catch (_) {}
+    //try { await ensureBackendReady(); } catch (_) {}
     const url = `${base}/api/create-qr`;
     const res = await fetch(url, {
       method: 'POST',
@@ -81,12 +81,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     });
     return res.json();
   },
-  
+
   checkPayment: async (qrCodeId) => {
     const base = await ipcRenderer.invoke('get-backend-base');
     const url = `${base}/api/check-payment/${encodeURIComponent(qrCodeId)}`;
     const res = await fetch(url);
     return res.json();
   }
-  
+
 });

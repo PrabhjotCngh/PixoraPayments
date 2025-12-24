@@ -24,14 +24,12 @@
         async function checkPayment(orderId) {
             try {
                 const response = await fetch(`/api/check-payment/${encodeURIComponent(orderId)}`);
-                // Check amount as well to avoid false positives
-                const expectedAmount = config.payment.amountInRupees;
-                const paidAmount = response.orderAmount;
-                const amountMatches = Number.isFinite(paidAmount) && paidAmount === expectedAmount;
-
-                if (response.success && response.paid && amountMatches) {
+                const data = await response.json();
+                if (data.success && data.paid) {
+                    console.log('Payment success:', data);
                     window.location.replace('success.html');
                 } else {
+                    console.log('Payment failed or not paid:', data);
                     window.location.replace('failure.html');
                 }
             } catch (e) {
@@ -41,6 +39,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const orderId = getOrderIdFromUrl();
+            console.log('orderId success:', orderId);
             if (orderId) {
                 checkPayment(orderId);
             } else {
