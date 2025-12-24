@@ -52,6 +52,7 @@ body {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -241,13 +242,14 @@ body {
 }
 
 .qr-code-wrapper {
-  background: white;
-  padding: 30px;
-  border-radius: 20px;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
   display: inline-block;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
   position: relative;
 }
+
 .qr-code-wrapper .loader-overlay {
   position: absolute;
   inset: 0;
@@ -255,6 +257,7 @@ body {
   border-radius: 20px;
   display: none;
 }
+
 .qr-code-wrapper.loading .loader-overlay {
   display: block;
 }
@@ -274,17 +277,22 @@ body {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  border: 6px solid rgba(243, 108, 33, 0.2); /* light ring */
-  border-top-color: #f36c21; /* brand color */
+  border: 6px solid rgba(243, 108, 33, 0.2);
+  /* light ring */
+  border-top-color: #f36c21;
+  /* brand color */
   animation: spin 0.9s linear infinite;
   display: none;
 }
+
 .qr-code-wrapper.loading .loader {
   display: block;
 }
 
 @keyframes spin {
-  to { transform: translate(-50%, -50%) rotate(360deg); }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }
 
 .container {
@@ -295,6 +303,7 @@ body {
   position: relative;
   z-index: 1;
 }
+
 /* Fullscreen background video for index */
 .video-bg {
   position: fixed;
@@ -319,8 +328,10 @@ body {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   z-index: 2;
   max-width: 520px;
-  pointer-events: none; /* do not block page tap */
+  pointer-events: none;
+  /* do not block page tap */
 }
+
 .font-preview .label {
   font-size: 12px;
   font-weight: 700;
@@ -329,11 +340,13 @@ body {
   color: #666;
   margin-bottom: 6px;
 }
+
 .font-preview .primary-font {
   font-family: 'playfull-rocket', 'Snap ITC', 'Welcome', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 24px;
   line-height: 1.25;
 }
+
 .font-preview .fallback-font {
   font-family: 'Snap ITC', 'Welcome', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 16px;
@@ -352,6 +365,7 @@ body {
   z-index: 3;
   pointer-events: none;
 }
+
 .badge-item {
   background: rgba(255, 255, 255, 0.9);
   color: #222;
@@ -407,7 +421,8 @@ body {
 }
 
 /* Success Screen */
-.success-icon, .failure-icon {
+.success-icon,
+.failure-icon {
   margin-bottom: 40px;
   animation: scaleIn 0.5s ease-out;
 }
@@ -417,6 +432,7 @@ body {
     transform: scale(0);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -480,14 +496,28 @@ body {
 .failure-screen .button-group {
   margin-top: 30px;
 }
+
 .failure-screen .button-group .btn {
   min-width: 260px;
 }
 
 /* Responsive adjustments */
 @media (max-width: 1366px) {
-  .title { font-size: 48px; }
-  .message { font-size: 20px; }
-  .btn { padding: 18px 50px; font-size: 22px; }
-  .qr-image { width: 350px; height: 350px; }
+  .title {
+    font-size: 48px;
+  }
+
+  .message {
+    font-size: 20px;
+  }
+
+  .btn {
+    padding: 18px 50px;
+    font-size: 22px;
+  }
+
+  .qr-image {
+    width: 350px;
+    height: 350px;
+  }
 }

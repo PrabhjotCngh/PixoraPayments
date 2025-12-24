@@ -13,59 +13,28 @@
   style="background-image: url('../assets/background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
 
   <div class="container">
-    <div class="payment-header" style="position:relative;">
-      <h1 class="title" style="margin:0; text-align:center;">Scan & Pay</h1>
-      <p class="subtitle">Scan the QR code with any UPI app to complete payment</p>
+
+
+
+    <div id="qr-code-wrapper" class="qr-code-wrapper loading" style="position: relative; min-height: 60vh; width: 100%;">
+      <div class="loader" style="width: 96px; height: 96px; border-width: 12px;"></div>
+      <div id="upi-qr"></div>
     </div>
 
-    <div class="qr-container">
-      <div id="qr-code-wrapper" class="qr-code-wrapper loading">
-        <div class="loader-overlay"></div>
-        <div class="loader"></div>
-        <div id="upi-qr"></div>
-      </div>
 
-      <div class="payment-details">
-        <div class="amount-display">
-          <span class="currency">₹</span>
-          <span id="amount" class="amount">200</span>
-        </div>
-        <p class="payment-info">for 2 strip copies</p>
-      </div>
-    </div>
 
-    <div class="timer-container">
-      <p>QR Code expires in: <span id="timer" class="timer">5:00</span></p>
-    </div>
-
-    <div id="status-message" class="status-message"></div>
   </div>
 
   <script>
     let qrCodeId = null;
-    let paymentCheckInterval = null;
-    let expiryTime = null;
-    let timerInterval = null;
-    let expirySeconds = 300;
 
     window.addEventListener('DOMContentLoaded', async () => {
       const config = await window.electronAPI.getConfig();
-
-      expirySeconds = ((config && config.payment && Number(config.payment.qrCodeExpiryMinutes))
-        ? Number(config.payment.qrCodeExpiryMinutes) * 60
-        : 300);
-
-      const amountInRupees =
-        Number(localStorage.getItem('orderAmount')) ||
-        config.payment.amountInRupees;
-
-      document.getElementById('amount').textContent = amountInRupees;
-      document.getElementById('timer').textContent =
-        `${Math.floor(expirySeconds / 60)}:00`;
-
+      const amountInRupees = Number(localStorage.getItem('orderAmount')) || config.payment.amountInRupees;
+      // Show loader while loading QR
+      const wrapperEl = document.getElementById('qr-code-wrapper');
+      if (wrapperEl) wrapperEl.classList.add('loading');
       await generateQRCode(amountInRupees);
-      startPaymentCheck();
-      startExpiryTimer(expirySeconds);
     });
 
     async function generateQRCode(amountInRupees) {
@@ -74,79 +43,30 @@
           amountInRupees * 100,
           'Pixora Photo Session'
         );
-
+        const wrapperEl = document.getElementById('qr-code-wrapper');
         if (!res?.success || !res?.qrCode?.payment_session_id) {
+          if (wrapperEl) wrapperEl.classList.remove('loading');
           throw new Error('Invalid Cashfree response');
         }
-
         qrCodeId = res?.qrCode?.order_id;
-
-        const wrapperEl = document.getElementById('qr-code-wrapper');
         if (wrapperEl) wrapperEl.classList.remove('loading');
-
-        const cashfree = Cashfree({
-          mode: res?.qrCode?.env
-        });
-
+        const cashfree = Cashfree({ mode: res?.qrCode?.env });
         cashfree.checkout({
           paymentSessionId: res?.qrCode?.payment_session_id,
           redirectTarget: "_self",
-          paymentMethod: {
-            upi: { flow: "qr" }
-          }
+          paymentMethod: { upi: { flow: "qr" } }
         });
-
       } catch (e) {
+        const wrapperEl = document.getElementById('qr-code-wrapper');
+        if (wrapperEl) wrapperEl.classList.remove('loading');
         console.error('QR generation failed', e);
         showError('Failed to generate QR');
       }
     }
 
-    function startPaymentCheck() {
-      paymentCheckInterval = setInterval(async () => {
-        if (!qrCodeId) return;
 
-        try {
-          const res = await window.electronAPI.checkPayment(qrCodeId);
-          if (res.success && res.paid) {
-            cleanup();
-            await window.electronAPI.notifyPaymentComplete();
-            await window.electronAPI.quitApp();
-          }
-        } catch (e) {
-          console.error('Payment check failed', e);
-        }
-      }, 2000);
-    }
 
-    function startExpiryTimer(seconds) {
-      expiryTime = Date.now() + seconds * 1000;
-
-      timerInterval = setInterval(() => {
-        const remaining = Math.max(0, expiryTime - Date.now());
-        const m = Math.floor(remaining / 60000);
-        const s = Math.floor((remaining % 60000) / 1000);
-
-        document.getElementById('timer').textContent =
-          `${m}:${String(s).padStart(2, '0')}`;
-
-        if (remaining <= 0) {
-          cleanup();
-          location.reload();
-        }
-      }, 1000);
-    }
-
-    function cleanup() {
-      if (paymentCheckInterval) clearInterval(paymentCheckInterval);
-      if (timerInterval) clearInterval(timerInterval);
-    }
-
-    function showError(msg) {
-      const el = document.getElementById('status-message');
-      el.textContent = msg;
-      el.style.display = 'block';
-    }
+    // No error or retry logic; only loader is shown
   </script>
 
 </body>
