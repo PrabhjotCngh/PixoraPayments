@@ -24,6 +24,9 @@ function log(msg) {
 log('Bridge client starting (HARD LOCK MODE)');
 
 /* ===================== PIXORA EXE ===================== */
+function sanitize(p) {
+  return String(p || '').replace(/^\s*"|"\s*$/g, '').trim();
+}
 function resolvePixoraExe() {
   const candidates = [];
   const envOverride = sanitize(process.env.PIXORA_EXE);
