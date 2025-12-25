@@ -76,7 +76,14 @@ function getDeviceId() {
   fs.writeFileSync(f, id);
   return id;
 }
-const DEVICE_ID = getDeviceId();
+
+function setDeviceId(newId) {
+  fs.writeFileSync(DEVICE_ID_FILE, newId);
+  DEVICE_ID = newId;
+  log(`ASSERT deviceId updated → ${newId}`);
+}
+
+let DEVICE_ID = getDeviceId();
 
 /* ===================== WINDOWS HARD LOCK ===================== */
 function runPS(script) {
@@ -181,6 +188,33 @@ function connect() {
         state.lastPaidAt = 0;
         writeState(state);
         log('ASSERT credit consumed');
+      }
+    }
+
+    /* ===== ADMIN EVENTS ===== */
+
+    else if (ev === 'reset_credit') {
+      state.hasCredit = false;
+      state.creditPendingSession = false;
+      state.lastPaidAt = 0;
+      state.currentSession = null;
+      writeState(state);
+      log('ASSERT credit reset by admin');
+    }
+
+    else if (ev === 'force_payment') {
+      state.creditPendingSession = false;
+      writeState(state);
+      log('ASSERT force_payment by admin');
+      lockScreenForPayment();
+    }
+
+    else if (ev === 'set_device_id') {
+      const newId = String(msg?.payload?.newId || '').trim();
+      if (newId) {
+        log(`ASSERT set_device_id → ${newId}`);
+        setDeviceId(newId);
+        try { ws.close(4100, 'device id change'); } catch (_) {}
       }
     }
   });

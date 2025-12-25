@@ -88,6 +88,9 @@ app.post('/api/create-qr', async (req, res) => {
         },
         order_meta: {
           return_url: 'https://pixora.textberry.io/thankyou.html?order_id=' + encodeURIComponent(orderId)
+        },
+        order_tag: {
+          location: 'HKV'
         }
       },
       {
