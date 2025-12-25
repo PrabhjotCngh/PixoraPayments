@@ -177,6 +177,26 @@ app.get('/api/check-payment/:id', async (req, res) => {
   }
 });
 
+// Basic auth middleware for /admin routes
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASS = process.env.ADMIN_PASS || 'password';
+
+function adminAuth(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Basic ')) {
+    res.set('WWW-Authenticate', 'Basic realm=\"Admin Area\"');
+    return res.status(401).send('Authentication required.');
+  }
+  const b64 = auth.split(' ')[1];
+  const [user, pass] = Buffer.from(b64, 'base64').toString().split(':');
+  if (user === ADMIN_USER && pass === ADMIN_PASS) return next();
+  res.set('WWW-Authenticate', 'Basic realm=\"Admin Area\"');
+  return res.status(401).send('Invalid credentials.');
+}
+
+// Apply to all /admin routes
+app.use('/admin', adminAuth);
+
 // Health check
 app.get('/health', (req, res) => {
   const environment = process.env.CASHFREE_ENV;
