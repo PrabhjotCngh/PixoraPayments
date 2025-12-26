@@ -4,6 +4,7 @@ const crypto = require('crypto');
 require('dotenv').config();
 const appConfig = require('./config.json');
 
+const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const app = express();
@@ -66,12 +67,36 @@ function getLocationCodeFromFile() {
   return 'NL'; // default
 }
 
+function getPixoraDataDir() {
+  // Linux / Mac
+  if (process.env.XDG_CONFIG_HOME) {
+    return process.env.XDG_CONFIG_HOME;
+  }
+
+  // Windows
+  if (process.env.APPDATA) {
+    return process.env.APPDATA;
+  }
+
+  // Fallback
+  return path.join(os.homedir(), '.config');
+}
+
+function getDeviceIdFile() {
+  return path.join(
+    getPixoraDataDir(),
+    'PixoraPayments',
+    'device-id.txt'
+  );
+}
+
 // API to get device_id from file
 app.get('/api/device_id_file', (req, res) => {
   try {
-    const file = path.join(process.cwd(), 'PixoraPayments', 'device-id.txt');
+    const file = getDeviceIdFile();
+
     if (fs.existsSync(file)) {
-      const v = String(fs.readFileSync(file, 'utf8')).trim();
+      const v = fs.readFileSync(file, 'utf8').trim();
       if (v) return res.json({ device_id: v });
     }
 
