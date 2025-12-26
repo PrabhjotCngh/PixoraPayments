@@ -3,6 +3,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 require('dotenv').config();
 const appConfig = require('./config.json');
+const { pixoraDir } = require('./pixoraPaths');
 
 const os = require('os');
 const path = require('path');
@@ -59,49 +60,35 @@ app.use((req, res, next) => {
 // Helper to read location_code from file
 function getLocationCodeFromFile() {
   try {
-    const f = path.join(process.cwd(), 'PixoraPayments', 'location-code.txt');
+    const f = path.join(pixoraDir(), 'location-code.txt');
     if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8').trim();
   } catch (e) {
     log(`location_code file read error: ${e}`);
   }
-  return 'NL'; // default
-}
-
-function getPixoraDataDir() {
-  // Linux / Mac
-  if (process.env.XDG_CONFIG_HOME) {
-    return process.env.XDG_CONFIG_HOME;
-  }
-
-  // Windows
-  if (process.env.APPDATA) {
-    return process.env.APPDATA;
-  }
-
-  // Fallback
-  return path.join(os.homedir(), '.config');
-}
-
-function getDeviceIdFile() {
-  return path.join(
-    getPixoraDataDir(),
-    'PixoraPayments',
-    'device-id.txt'
-  );
+  return 'HKV'; // default
 }
 
 // API to get device_id from file
 app.get('/api/device_id_file', (req, res) => {
   try {
-    const file = getDeviceIdFile();
+    const file = path.join(pixoraDir(), 'device-id.txt');
 
-    if (fs.existsSync(file)) {
-      const v = fs.readFileSync(file, 'utf8').trim();
-      if (v) return res.json({ device_id: v });
+    console.log('Reading device-id from:', file);
+
+    if (!fs.existsSync(file)) {
+      console.log('File does not exist');
+      return res.status(404).json({ error: 'Device ID not found' });
+    }
+
+    const v = fs.readFileSync(file, 'utf8').trim();
+    if (!v) {
+      console.log('File empty');
+      return res.status(404).json({ error: 'Device ID empty' });
     }
 
     return res.status(404).json({ error: 'Device ID not found' });
   } catch (e) {
+    console.error('device_id_file error:', e);
     return res.status(500).json({ error: 'Error reading device ID file' });
   }
 });
@@ -113,13 +100,13 @@ app.post('/admin/save_location_code', adminAuth, (req, res) => {
     return res.status(400).json({ success: false, error: 'location_code required' });
   }
   try {
-    const f = path.join(process.env.APPDATA || process.cwd(), 'PixoraPayments', 'location-code.txt');
+    const f = path.join(pixoraDir(), 'location-code.txt');
     fs.mkdirSync(path.dirname(f), { recursive: true });
     fs.writeFileSync(f, location_code.trim(), 'utf8');
     res.json({ success: true, location_code });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
-  }
+  } s.status(500).json({ success: false, error: e.message });
 });
 
 // Create QR Code for UPI payment
