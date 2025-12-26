@@ -4,8 +4,9 @@ const crypto = require('crypto');
 require('dotenv').config();
 const appConfig = require('./config.json');
 
-
+const os = require('os');
 const path = require('path');
+const fs = require('fs');
 const app = express();
 app.use(express.json());
 
@@ -55,10 +56,46 @@ app.use((req, res, next) => {
   next();
 });
 
-// Cashfree REST: we call the HTTP PG endpoints via axios; no SDK client needed here
+// Helper to read location_code from file
+function getLocationCodeFromFile() {
+  try {
+    const f = path.join(process.env.APPDATA || process.cwd(), 'PixoraPayments', 'location-code.txt');
+    if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8').trim();
+  } catch (_) { }
+  return 'NL'; // default
+}
 
-// In-memory storage for payment statuses (for single machine use)
-const paymentStatuses = new Map();
+// API to get device_id from file
+app.get('/api/device_id_file', (req, res) => {
+  try {
+    // Electron's app.getPath('userData') equivalent for Node.js
+    const userDataDir = path.join(os.homedir(), 'Library', 'Application Support', 'PixoraPayments');
+    const file = path.join(userDataDir, 'device-id.txt');
+    if (fs.existsSync(file)) {
+      const v = String(fs.readFileSync(file, 'utf8')).trim();
+      if (v) return res.json({ device_id: v });
+    }
+    return res.status(404).json({ error: 'Device ID not found' });
+  } catch (e) {
+    return res.status(500).json({ error: 'Error reading device ID file' });
+  }
+});
+
+// Admin API to set location_code (writes to file)
+app.post('/admin/save_location_code', adminAuth, (req, res) => {
+  const { location_code } = req.body;
+  if (!location_code || typeof location_code !== 'string') {
+    return res.status(400).json({ success: false, error: 'location_code required' });
+  }
+  try {
+    const f = path.join(process.env.APPDATA || process.cwd(), 'PixoraPayments', 'location-code.txt');
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, location_code.trim(), 'utf8');
+    res.json({ success: true, location_code });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
 
 // Create QR Code for UPI payment
 app.post('/api/create-qr', async (req, res) => {
@@ -75,6 +112,8 @@ app.post('/api/create-qr', async (req, res) => {
     const CASHFREE_API_URL = getCashfreeOrdersBase();
 
     // Create Cashfree order via REST (axios)
+    // Always use local location_code from file
+    const locationCode = getLocationCodeFromFile();
     const cfResp = await axios.post(
       CASHFREE_API_URL,
       {
@@ -90,7 +129,7 @@ app.post('/api/create-qr', async (req, res) => {
           return_url: 'https://pixora.textberry.io/thankyou.html?order_id=' + encodeURIComponent(orderId)
         },
         order_tag: {
-          location: 'HKV'
+          location_code: locationCode
         }
       },
       {
@@ -109,15 +148,9 @@ app.post('/api/create-qr', async (req, res) => {
     const qrData = {
       order_id: data.order_id,
       payment_session_id: data.payment_session_id,
-      env: process.env.CASHFREE_ENV
+      env: process.env.CASHFREE_ENV,
+      order_code: data.order_code
     };
-
-    paymentStatuses.set(orderId, {
-      status: data.order_status || 'ACTIVE',
-      orderData: data,
-      amount: amount,
-      createdAt: Date.now()
-    });
 
     console.log('Cashfree order created (REST):', orderId);
     res.json({ success: true, qrCode: qrData });
@@ -132,12 +165,6 @@ app.post('/api/create-qr', async (req, res) => {
 app.get('/api/check-payment/:id', async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Check in-memory status first
-    const cachedStatus = paymentStatuses.get(id);
-    if (cachedStatus && (cachedStatus.status === 'PAID' || cachedStatus.status === 'paid')) {
-      return res.json({ success: true, paid: true });
-    }
 
     // Fetch order status from Cashfree via REST (matches your working curl)
     const getCashfreeOrdersBase = () => {
@@ -160,11 +187,6 @@ app.get('/api/check-payment/:id', async (req, res) => {
     const orderStatus = data.order_status;
 
     if (orderStatus === 'PAID') {
-      paymentStatuses.set(id, {
-        ...cachedStatus,
-        status: 'PAID',
-        orderData: data
-      });
       console.log('Payment successful for order:', id);
       return res.json({ success: true, paid: true, orderAmount: data.order_amount });
     }

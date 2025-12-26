@@ -6,7 +6,7 @@
   },
   "screens": {
     "successDuration": 3000,
-    "failureDuration": 50000,
+    "failureDuration": 3000,
     "paymentStatusPollMs": 3000
   },
   "assets": {
