@@ -69,11 +69,12 @@ function isCreditValid(state) {
 }
 
 /* ===================== DEVICE ID ===================== */
+const DEVICE_ID_FILE = path.join(path.dirname(STATE_FILE), 'device-id.txt');
+
 function getDeviceId() {
-  const f = path.join(path.dirname(STATE_FILE), 'device-id.txt');
-  if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8').trim();
+  if (fs.existsSync(DEVICE_ID_FILE)) return fs.readFileSync(DEVICE_ID_FILE, 'utf8').trim();
   const id = crypto.randomUUID();
-  fs.writeFileSync(f, id);
+  fs.writeFileSync(DEVICE_ID_FILE, id);
   return id;
 }
 

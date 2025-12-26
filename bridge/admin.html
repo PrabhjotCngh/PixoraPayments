@@ -61,42 +61,60 @@
     <input id="token" type="text" placeholder="ADMIN_TOKEN" />
     <button onclick="refreshHealth()">Refresh Health</button>
   </div>
-  <div class="row">
+
+  <form class="section" onsubmit="event.preventDefault();">
+    <h2 style="font-size:16px;">Manage socket connections</h2>
     <label>Device ID:</label>
     <input id="deviceId" type="text" placeholder="PIXORA_001" required />
-    <input id="localLocationCode" type="text" placeholder="Location Code" required />
     <label>Event:</label>
-    <select id="eventType">
+    <select id="eventType" required>
       <option value="payment_complete">payment_complete</option>
       <option value="session_start">session_start</option>
     </select>
     <label>Duration (ms):</label>
-    <input id="duration" type="number" value="600000" />
-    <button onclick="mute()">Mute</button>
-    <button onclick="unmute()">Unmute</button>
-    <button onclick="disconnect()">Disconnect</button>
-    <button onclick="blockDevice()" style="background:#fee;border:1px solid #f99">Block</button>
-    <button onclick="unblockDevice()" style="background:#efe;border:1px solid #9f9">Unblock</button>
-  </div>
+    <input id="duration" type="number" value="600000" required />
+    <button type="button" onclick="mute()">Mute</button>
+    <button type="button" onclick="unmute()">Unmute</button>
+    <button type="button" onclick="disconnect()">Disconnect</button>
+    <button type="button" onclick="blockDevice()" style="background:#fee;border:1px solid #f99">Block</button>
+    <button type="button" onclick="unblockDevice()" style="background:#efe;border:1px solid #9f9">Unblock</button>
+  </form>
+
+  <form class="section" onsubmit="event.preventDefault();">
+    <h2 style="font-size:16px;">Send Event</h2>
+    <label>Event Type:</label>
+    <input id="sendEventType" type="text" value="session_start" required />
+    <label>Device ID:</label>
+    <input id="sendDeviceId" type="text" placeholder="PIXORA_001" required />
+    <button type="button" onclick="sendEvent()">POST /event</button>
+    <button type="button" onclick="launchPayment()" style="margin-left:4px">Launch Payment</button>
+  </form>
+
+  <form class="section" onsubmit="event.preventDefault();">
+    <h2 style="font-size:16px;">Reset Credit</h2>
+    <label>Device ID:</label>
+    <input id="resetCreditDeviceId" type="text" placeholder="PIXORA_001" required />
+    <button type="button" onclick="resetCreditSection()">Reset Credit</button>
+  </form>
+
+  <form class="section" onsubmit="event.preventDefault();">
+    <h2 style="font-size:16px;">Rename Device ID</h2>
+    <label>Current Device ID:</label>
+    <input id="renameCurrentId" type="text" placeholder="current-id" required />
+    <label>New Device ID:</label>
+    <input id="renameNewId" type="text" placeholder="new-id" required />
+    <button type="button" onclick="renameDeviceId()">Set Device ID</button>
+  </form>
   <div class="row">
-    <label>Send Event:</label>
-    <input id="sendEventType" type="text" value="session_start" />
-    <input id="sendDeviceId" type="text" placeholder="PIXORA_001" />
-    <button onclick="sendEvent()">POST /event</button>
-    <button onclick="resetCredit()" style="margin-left:8px">Reset Credit</button>
-    <button onclick="launchPayment()" style="margin-left:4px">Launch Payment</button>
   </div>
-  <div class="row">
-    <label>Rename Device ID:</label>
-    <input id="renameCurrentId" type="text" placeholder="current-id" />
-    <input id="renameNewId" type="text" placeholder="new-id" />
-    <button onclick="renameDeviceId()">Set Device ID</button>
-  </div>
-  <div class="row">
-    <label>Set Location Code:</label>
-    <input id="locationCode" type="text" placeholder="HKV..." />
-    <button onclick="saveLocationCode()">Save Location Code</button>
-  </div>
+  <form class="section" onsubmit="event.preventDefault();" style="margin-top:16px;">
+    <h2 style="font-size:16px;margin-bottom:8px;">Update/Add Location Code</h2>
+    <label for="updateDeviceId">Device ID:</label>
+    <input id="updateDeviceId" type="text" placeholder="PIXORA_001" required />
+    <label for="updateLocationCode">Location Code:</label>
+    <input id="updateLocationCode" type="text" placeholder="Location Code" required />
+    <button type="button" onclick="saveLocationCode()">Save Location Code</button>
+  </form>
   <div class="devices" id="devices"></div>
   <div class="devices" id="blocked"></div>
   <h3>Logs</h3>
@@ -207,8 +225,8 @@
       } catch (e) { log('SendEvent error: ' + e.message); }
     }
 
-    async function resetCredit() {
-      const deviceId = document.getElementById('sendDeviceId').value.trim() || document.getElementById('deviceId').value.trim();
+    async function resetCreditSection() {
+      const deviceId = document.getElementById('resetCreditDeviceId').value.trim();
       if (!deviceId) return log('Provide deviceId to reset credit');
       try {
         const res = await fetch('/admin/reset_credit', { method: 'POST', headers: headers(), body: JSON.stringify({ deviceId }) });
@@ -236,8 +254,8 @@
     }
 
     async function saveLocationCode() {
-      const locationCodeInput = document.getElementById('localLocationCode');
-      const deviceIdInput = document.getElementById('deviceId');
+      const locationCodeInput = document.getElementById('updateLocationCode');
+      const deviceIdInput = document.getElementById('updateDeviceId');
       const locationCode = locationCodeInput.value.trim();
       const deviceId = deviceIdInput.value.trim();
       let errorMsg = '';

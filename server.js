@@ -68,8 +68,7 @@ function getLocationCodeFromFile() {
 // API to get device_id from file
 app.get('/api/device_id_file', (req, res) => {
   try {
-    // Electron's app.getPath('userData') equivalent for Node.js
-    const userDataDir = path.join(os.homedir(), 'Library', 'Application Support', 'PixoraPayments');
+    const userDataDir = path.join(process.env.APPDATA || process.cwd(), 'PixoraPayments');
     const file = path.join(userDataDir, 'device-id.txt');
     if (fs.existsSync(file)) {
       const v = String(fs.readFileSync(file, 'utf8')).trim();
