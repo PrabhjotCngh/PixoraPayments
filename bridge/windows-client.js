@@ -17,7 +17,7 @@ function log(msg) {
   const verbose = ['1', 'true', 'debug'].includes(String(process.env.CLIENT_VERBOSE_LOGS).toLowerCase());
   const important = /assert|error|credit|lock|unlock|payment/i.test(msg);
   if (!verbose && !important) return;
-  try { fs.appendFileSync('bridge-debug.log', `${ts()} ${msg}\n`); } catch (_) {}
+  try { fs.appendFileSync('bridge-debug.log', `${ts()} ${msg}\n`); } catch (_) { }
   console.log(msg);
 }
 
@@ -215,7 +215,7 @@ function connect() {
       if (newId) {
         log(`ASSERT set_device_id → ${newId}`);
         setDeviceId(newId);
-        try { ws.close(4100, 'device id change'); } catch (_) {}
+        try { ws.close(4100, 'device id change'); } catch (_) { }
       }
     }
   });

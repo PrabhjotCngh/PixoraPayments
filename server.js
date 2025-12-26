@@ -4,7 +4,6 @@ const crypto = require('crypto');
 require('dotenv').config();
 const appConfig = require('./config.json');
 
-const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const app = express();
@@ -59,21 +58,23 @@ app.use((req, res, next) => {
 // Helper to read location_code from file
 function getLocationCodeFromFile() {
   try {
-    const f = path.join(process.env.APPDATA || process.cwd(), 'PixoraPayments', 'location-code.txt');
+    const f = path.join(process.cwd(), 'PixoraPayments', 'location-code.txt');
     if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8').trim();
-  } catch (_) { }
+  } catch (e) {
+    log(`location_code file read error: ${e}`);
+  }
   return 'NL'; // default
 }
 
 // API to get device_id from file
 app.get('/api/device_id_file', (req, res) => {
   try {
-    const userDataDir = path.join(process.env.APPDATA || process.cwd(), 'PixoraPayments');
-    const file = path.join(userDataDir, 'device-id.txt');
+    const file = path.join(process.cwd(), 'PixoraPayments', 'device-id.txt');
     if (fs.existsSync(file)) {
       const v = String(fs.readFileSync(file, 'utf8')).trim();
       if (v) return res.json({ device_id: v });
     }
+
     return res.status(404).json({ error: 'Device ID not found' });
   } catch (e) {
     return res.status(500).json({ error: 'Error reading device ID file' });
