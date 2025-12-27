@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Payment</title>
+  <link rel="stylesheet" href="./css/kiosk.css">
+    <!-- Cashfree UI SDK for UPI components (use stable alias to avoid 404s) -->
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+</head>
+
+<body class="payment-screen"
+    style="background-image: url('../assets/background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
+
+    <div class="container">
+        <div class="payment-header" style="position:relative;">
+            <h1 class="title" style="margin:0; text-align:center;">Scan & Pay</h1>
+            <p class="subtitle">Scan the QR code with any UPI app to complete payment</p>
+        </div>
+        <div id="highlight-message" class="highlight-message" style="display:none;"></div>
+
+        <div class="qr-container">
+            <div id="qr-code-wrapper" class="qr-code-wrapper loading">
+                <div class="loader-overlay" aria-hidden="true"></div>
+                <div class="loader" aria-label="Loading"></div>
+                <div id="upi-qr"></div>
+            </div>
+
+            <div class="payment-details">
+                <div class="amount-display">
+                    <span class="currency">₹</span>
+                    <span id="amount" class="amount">200</span>
+                </div>
+                <p class="payment-info">for 2 strip copies</p>
+            </div>
+        </div>
+
+
+
+        <div class="timer-container">
+            <p>QR Code expires in: <span id="timer" class="timer">5:00</span></p>
+        </div>
+
+        <div id="status-message" class="status-message"></div>
+    </div>
+
+    <!-- Badge stack: device + QR source -->
+    <div class="badge-stack">
+        <div id="device-badge" class="badge-item"></div>
+        <div id="qr-source-badge" class="badge-item" style="display:none;"></div>
+    </div>
+
+    <!-- Device ID first-run modal -->
+    <div id="deviceIdModal"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center;">
+        <div
+            style="background:#fff; color:#222; width:520px; max-width:90%; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.35); padding:22px 22px 16px;">
+            <div style="font-size:18px; font-weight:700; margin-bottom:10px;">Device ID</div>
+            <div style="font-size:12px; color:#666; margin-bottom:10px;">Shown below and editable. Leave empty to keep
+                current value.</div>
+            <input id="deviceIdInput" type="text"
+                style="width:100%; padding:10px 12px; font-size:14px; border:1px solid #ddd; border-radius:8px; outline:none;" />
+            <div id="deviceIdError" style="display:none; color:#c0392b; font-size:12px; margin-top:8px;">Please enter a
+                valid Device ID.</div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+                <button id="deviceIdSkip" class="btn btn-secondary"
+                    style="padding:10px 18px; font-size:14px;">Skip</button>
+                <button id="deviceIdSave" class="btn btn-primary"
+                    style="padding:10px 18px; font-size:14px;">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network modal: shown when offline or network failures -->
+    <div id="networkModal"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+        <div
+            style="background:#fff; color:#222; width:520px; max-width:90%; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,0.35); padding:22px 22px 16px;">
+            <div style="font-size:18px; font-weight:700; margin-bottom:10px;">No Internet Connection</div>
+            <div id="networkModalMsg" style="font-size:13px; color:#555; margin-bottom:12px;">Please check your network
+                and tap Retry.</div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+                <button id="networkDismiss" class="btn btn-secondary"
+                    style="padding:10px 18px; font-size:14px;">Dismiss</button>
+                <button id="networkRetry" class="btn btn-primary"
+                    style="padding:10px 18px; font-size:14px;">Retry</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let qrCodeId = null;
+        let paymentCheckInterval = null;
+        let config = null;
+        let expiryTime = null;
+        let timerInterval = null;
+        let useGateway = true;
+        let lastAmountInRupees = null;
+        let lastPhotoCount = null;
+        let expirySeconds = 300;
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            config = await window.electronAPI.getConfig();
+            // Resolve expiry from config: minutes * 60 (fallback to 300)
+            expirySeconds = ((config && config.payment && Number(config.payment.qrCodeExpiryMinutes))
+                ? Number(config.payment.qrCodeExpiryMinutes) * 60
+                : 300);
+            // Show device connection badge
+            try {
+                const id = await (window.electronAPI && window.electronAPI.getDeviceId ? window.electronAPI.getDeviceId() : Promise.resolve(''));
+                const badge = document.getElementById('device-badge');
+                if (badge && id) badge.textContent = `Connected as ${id}`;
+                // First-run modal logic: show once (or when id changes)
+                try {
+                    const acknowledgedFor = localStorage.getItem('deviceIdAcknowledgedFor') || '';
+                    if (!acknowledgedFor || acknowledgedFor !== id) {
+                        showDeviceIdModal(id);
+                    }
+                } catch (_) { }
+            } catch (_) { }
+
+
+            // Read selection from localStorage (fallback to config)
+            const selectedAmount = parseInt(localStorage.getItem('orderAmount') || '', 10);
+            const selectedCount = parseInt(localStorage.getItem('orderCount') || '', 10);
+            const amountInRupees = Number.isFinite(selectedAmount) ? selectedAmount : config.payment.amountInRupees;
+            const photoCount = Number.isFinite(selectedCount) ? selectedCount : 2;
+            lastAmountInRupees = amountInRupees;
+            lastPhotoCount = photoCount;
+
+            // Display amount and description
+            document.getElementById('amount').textContent = amountInRupees;
+            const infoEl = document.querySelector('.payment-info');
+            if (infoEl) infoEl.textContent = `for ${photoCount} ${photoCount === 2 ? 'strip copies' : 'photos'}`;
+            const timerEl = document.getElementById('timer');
+            if (timerEl) timerEl.textContent = `${Math.floor(expirySeconds / 60)}:00`;
+
+            // Static QR mode toggle
+            useGateway = !(config && config.payment && config.payment.usePaymentGateway === false);
+
+            if (useGateway) {
+                // If offline, prompt retry instead of starting the flow
+                if (!navigator.onLine) {
+                    showNetworkModal('initial-offline');
+                    return;
+                }
+                // Generate dynamic QR via Cashfree and start polling
+                await generateQRCode(amountInRupees, photoCount);
+                startPaymentCheck();
+                startExpiryTimer(expirySeconds);
+            } else {
+                renderStaticQR();
+                startExpiryTimer(expirySeconds);
+            }
+
+            // Admin hotkey: Ctrl+Shift+D to edit Device ID anytime
+            window.addEventListener('keydown', async (e) => {
+                try {
+                    if (e.ctrlKey && e.shiftKey && (e.code === 'KeyD' || e.key.toLowerCase() === 'd')) {
+                        e.preventDefault();
+                        const id = await (window.electronAPI && window.electronAPI.getDeviceId ? window.electronAPI.getDeviceId() : Promise.resolve(''));
+                        showDeviceIdModal(id);
+                    }
+                } catch (_) { }
+            });
+
+            // Network listeners
+            window.addEventListener('offline', () => {
+                showNetworkModal('offline');
+            });
+            window.addEventListener('online', () => {
+                const msg = document.getElementById('networkModalMsg');
+                if (msg) {
+                    msg.textContent = 'Back online. Tap Retry to continue.';
+                }
+            });
+        });
+
+        async function generateQRCode(amountInRupees, photoCount) {
+            try {
+                clearStatus();
+                const amount = amountInRupees * 100; // Convert to paise
+                const description = `Photobooth Session - ${photoCount} ${photoCount === 2 ? 'strip copies' : 'photos'}`;
+
+                // Create order via backend (returns order_id and payment_session_id)
+                const response = await window.electronAPI.createQRCode(amount, description);
+
+                if (response.success) {
+                    const { id, order_id, payment_session_id, payment_link, image_url, env } = response.qrCode;
+                    qrCodeId = order_id || id;
+
+                    // Initialize Cashfree UI SDK using env (fallback to hostname heuristic)
+                    let cfMode = (env === 'production' ? 'production' : 'sandbox');
+                    if (!env) {
+                        // Fallback if server didn't send env
+                        try {
+                            const envMode = await (window.electronAPI && window.electronAPI.getCashfreeEnv ? window.electronAPI.getCashfreeEnv() : Promise.resolve('production'));
+                            cfMode = (envMode === 'production') ? 'production' : 'sandbox';
+                        } catch (_) {
+                            cfMode = (window.location.hostname === 'localhost' ? 'sandbox' : 'production');
+                        }
+                    }
+                    const cashfree = Cashfree({ mode: cfMode });
+
+                    // Mount the UPI QR component into the dedicated container
+                    const wrapperEl = document.getElementById('qr-code-wrapper');
+                    const qrMountEl = document.getElementById('upi-qr');
+                    if (qrMountEl) qrMountEl.innerHTML = '';
+
+                    const upiQr = cashfree.create('upiQr', {
+                        values: {
+                            size: '280px',
+                            paymentSessionId: payment_session_id
+                        }
+                    });
+
+                    // Handle component load errors
+                    upiQr.on('loaderror', function (data) {
+                        console.error('Cashfree UPI QR load error:', data?.error);
+                        // If offline, show network modal instead of fallback
+                        if (!navigator.onLine) {
+                            showNetworkModal('sdk-loaderror-offline');
+                            const wrapperEl = document.getElementById('qr-code-wrapper');
+                            if (wrapperEl) wrapperEl.classList.remove('loading');
+                            return;
+                        }
+                        // Fallbacks: try local QR render from payment_link, else static image
+                        if (payment_link && window.QRCode && qrMountEl) {
+                            renderLocalQR(payment_link);
+                            setQrSourceBadge('local');
+                            clearStatus();
+                            if (wrapperEl) wrapperEl.classList.remove('loading');
+                        } else if (image_url && qrMountEl) {
+                            qrMountEl.innerHTML = `<img src="${image_url}" alt="UPI QR Code" class="qr-image">`;
+                            setQrSourceBadge('image_url');
+                            clearStatus();
+                            if (wrapperEl) wrapperEl.classList.remove('loading');
+                        } else {
+                            showError('Failed to load UPI QR. Please try again.');
+                            if (wrapperEl) wrapperEl.classList.remove('loading');
+                        }
+                    });
+
+                    // Mount the component
+                    upiQr.mount('#upi-qr');
+
+                    // Ready event (optional debug)
+                    upiQr.on('ready', function (d) {
+                        // Hide loader once component is ready
+                        if (wrapperEl) wrapperEl.classList.remove('loading');
+                        setQrSourceBadge('sdk', cfMode);
+                        clearStatus();
+                    });
+                } else {
+                    showError('Failed to create payment order. Please try again.');
+                    const wrapperEl = document.getElementById('qr-code-wrapper');
+                    if (wrapperEl) wrapperEl.classList.remove('loading');
+                }
+            } catch (error) {
+                console.error('Error generating QR/component:', error);
+                showError('Error generating QR code: ' + error.message);
+                if (!navigator.onLine) {
+                    showNetworkModal('create-qr-error');
+                }
+                const wrapperEl = document.getElementById('qr-code-wrapper');
+                if (wrapperEl) wrapperEl.classList.remove('loading');
+            }
+        }
+
+        function startPaymentCheck() {
+            const pollMs = (config && config.screens && Number(config.screens.paymentStatusPollMs)) || 2000;
+            paymentCheckInterval = setInterval(async () => {
+                if (!qrCodeId) return;
+
+                try {
+                    const response = await window.electronAPI.checkPayment(qrCodeId);
+                    // Check amount as well to avoid false positives
+                    const expectedAmount = Number(document.getElementById('amount').textContent);
+                    const paidAmount = Number(
+                        (response.amountInRupees !== undefined ? response.amountInRupees :
+                            response.amount !== undefined ? response.amount / 100 : // if in paise
+                                0)
+                    );
+                    const amountMatches = Number.isFinite(paidAmount) && paidAmount === expectedAmount;
+
+                    if (response.success && response.paid && amountMatches) {
+                        cleanup();
+                        // Notify bridge that payment completed, then quit Pixora
+                        try { await window.electronAPI.notifyPaymentComplete(); } catch (_) { }
+                        try { await window.electronAPI.quitApp(); } catch (_) { }
+                    }
+                } catch (error) {
+                    console.error('Error checking payment:', error);
+                    if (!navigator.onLine) {
+                        showNetworkModal('check-payment-error');
+                    }
+                }
+            }, pollMs); // Poll interval from config (ms), fallback 2000ms
+        }
+
+        function startExpiryTimer(seconds) {
+            expiryTime = Date.now() + (seconds * 1000);
+
+            timerInterval = setInterval(() => {
+                const remaining = Math.max(0, expiryTime - Date.now());
+                const minutes = Math.floor(remaining / 60000);
+                const secs = Math.floor((remaining % 60000) / 1000);
+
+                const timerEl = document.getElementById('timer');
+                if (timerEl) timerEl.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
+
+                if (remaining <= 0) {
+                    onTimerExpired();
+                }
+            }, 1000);
+        }
+
+        async function onTimerExpired() {
+            cleanup();
+            // Reset the payment page by regenerating QR and restarting checks
+            try {
+                const wrapperEl = document.getElementById('qr-code-wrapper');
+                const qrMountEl = document.getElementById('upi-qr');
+                if (wrapperEl) wrapperEl.classList.add('loading');
+                if (qrMountEl) qrMountEl.innerHTML = '';
+
+                if (useGateway) {
+                    await generateQRCode(lastAmountInRupees, lastPhotoCount);
+                    startPaymentCheck();
+                } else {
+                    renderStaticQR();
+                }
+
+                startExpiryTimer(expirySeconds);
+            } catch (e) {
+                console.error('Error resetting payment flow:', e);
+                showError('Unable to refresh QR. Retrying...');
+                // Attempt another refresh after a short delay
+                setTimeout(() => startExpiryTimer(expirySeconds), 3000);
+            }
+        }
+
+        function renderStaticQR() {
+            const wrapperEl = document.getElementById('qr-code-wrapper');
+            const qrMountEl = document.getElementById('upi-qr');
+            if (qrMountEl) qrMountEl.innerHTML = '';
+            const staticPath = (config && config.assets && config.assets.staticQrImage) || '../assets/static_qr.png';
+            const img = document.createElement('img');
+            img.src = staticPath;
+            img.alt = 'Static UPI QR';
+            img.className = 'qr-image';
+            img.onload = () => { if (wrapperEl) wrapperEl.classList.remove('loading'); };
+            img.onerror = () => { if (wrapperEl) wrapperEl.classList.remove('loading'); };
+            qrMountEl.appendChild(img);
+
+            setQrSourceBadge('static');
+
+            const msg = document.getElementById('highlight-message');
+            if (msg) {
+                msg.textContent = 'Once payment is done, tap anywhere to continue';
+                msg.style.display = 'block';
+            }
+
+            let tapped = false;
+            const tapHandler = async () => {
+                if (tapped) return;
+                tapped = true;
+                try { await window.electronAPI.notifyPaymentComplete(); } catch (_) { }
+                try { await window.electronAPI.quitApp(); } catch (_) { }
+            };
+            document.body.addEventListener('click', tapHandler);
+            document.body.addEventListener('touchstart', tapHandler);
+        }
+
+        function cleanup() {
+            if (paymentCheckInterval) clearInterval(paymentCheckInterval);
+            if (timerInterval) clearInterval(timerInterval);
+        }
+
+        function showError(message) {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.style.display = 'block';
+            statusEl.classList.add('error');
+        }
+
+        function clearStatus() {
+            const statusEl = document.getElementById('status-message');
+            if (!statusEl) return;
+            statusEl.textContent = '';
+            statusEl.style.display = 'none';
+            statusEl.classList.remove('error');
+        }
+
+        function showNetworkModal(source) {
+            try {
+                cleanup();
+                const modal = document.getElementById('networkModal');
+                const msg = document.getElementById('networkModalMsg');
+                if (!modal) return;
+                const map = {
+                    'initial-offline': 'You are offline. Please connect and retry.',
+                    'offline': 'Connection lost. Please reconnect and retry.',
+                    'sdk-loaderror-offline': 'Network error while loading QR. Please reconnect and retry.',
+                    'create-qr-error': 'Unable to create order due to network error.',
+                    'check-payment-error': 'Unable to check payment due to network error.'
+                };
+                if (msg && map[source]) msg.textContent = map[source];
+                modal.style.display = 'flex';
+                const dismissBtn = document.getElementById('networkDismiss');
+                const retryBtn = document.getElementById('networkRetry');
+                if (dismissBtn) dismissBtn.onclick = () => { hideNetworkModal(); };
+                if (retryBtn) retryBtn.onclick = async () => {
+                    if (!navigator.onLine) {
+                        if (msg) msg.textContent = 'Still offline. Please reconnect and try again.';
+                        return;
+                    }
+                    try {
+                        const wrapperEl = document.getElementById('qr-code-wrapper');
+                        const qrMountEl = document.getElementById('upi-qr');
+                        if (wrapperEl) wrapperEl.classList.add('loading');
+                        if (qrMountEl) qrMountEl.innerHTML = '';
+                        if (useGateway) {
+                            await generateQRCode(lastAmountInRupees, lastPhotoCount);
+                            startPaymentCheck();
+                            startExpiryTimer(expirySeconds);
+                        } else {
+                            renderStaticQR();
+                            startExpiryTimer(expirySeconds);
+                        }
+                        hideNetworkModal();
+                    } catch (e) {
+                        if (msg) msg.textContent = 'Retry failed. Please check connection and try again.';
+                    }
+                };
+            } catch (_) { }
+        }
+
+        function hideNetworkModal() {
+            const modal = document.getElementById('networkModal');
+            if (modal) modal.style.display = 'none';
+        }
+    </script>
+    <script>
+        function setQrSourceBadge(source, mode) {
+            const badge = document.getElementById('qr-source-badge');
+            if (!badge) return;
+            const label = {
+                'sdk': `QR source: SDK${mode ? ` (${mode})` : ''}`,
+                'image_url': 'QR source: image_url',
+                'static': 'QR source: Static QR',
+                'local': 'QR source: Local QR (payment_link)'
+            }[source] || 'QR source: Unknown';
+            badge.textContent = label;
+            badge.style.display = 'block';
+        }
+        function showDeviceIdModal(currentId) {
+            const modal = document.getElementById('deviceIdModal');
+            const input = document.getElementById('deviceIdInput');
+            const err = document.getElementById('deviceIdError');
+            if (!modal || !input) return;
+            input.value = currentId || '';
+            err.style.display = 'none';
+            modal.style.display = 'flex';
+
+            const close = (updatedId) => {
+                try { if (updatedId) localStorage.setItem('deviceIdAcknowledgedFor', updatedId); } catch (_) { }
+                modal.style.display = 'none';
+                // Update badge
+                const badge = document.getElementById('device-badge');
+                if (badge && updatedId) badge.textContent = `Connected as ${updatedId}`;
+            };
+
+            document.getElementById('deviceIdSkip').onclick = () => {
+                close(currentId || input.value.trim());
+            };
+            document.getElementById('deviceIdSave').onclick = async () => {
+                const v = (input.value || '').trim();
+                if (!v) {
+                    // Keep existing if blank
+                    close(currentId);
+                    return;
+                }
+                try {
+                    const res = await (window.electronAPI && window.electronAPI.setDeviceId ? window.electronAPI.setDeviceId(v) : Promise.resolve({ success: false }));
+                    if (res && res.success) {
+                        close(res.deviceId || v);
+                    } else {
+                        err.style.display = 'block';
+                    }
+                } catch (_) {
+                    err.style.display = 'block';
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

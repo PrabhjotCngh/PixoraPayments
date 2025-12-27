@@ -1,58 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
+  <title>Pixora Photorooms</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pixora Payments</title>
-  <link rel="stylesheet" href="styles.css">
+
+  <link rel="stylesheet" href="./css/site.css">
+  <script defer src="./js/renderer.js"></script>
 </head>
-<body class="welcome-screen">
-  <!-- Fullscreen looping background video -->
-  <video id="bg-video" class="video-bg" autoplay loop playsinline></video>
 
-  <script>
-    // On tap/click, open payment page
-    window.addEventListener('DOMContentLoaded', async () => {
-      // Load video source from config if available, else default path
-      try {
-        const cfg = await (window.electronAPI?.getConfig?.() || Promise.resolve(null));
-        const videoEl = document.getElementById('bg-video');
-        if (videoEl) {
-            // Hide until playable; no poster fallback
-            videoEl.style.display = 'none';
-            // Ensure autoplay with sound
-            videoEl.muted = false; videoEl.volume = 1.0; videoEl.playsInline = true; videoEl.autoplay = true;
+<body class="site-body">
 
-            // Load video source from config if available, else default path
-            let src = '../assets/welcome.mp4';
-            try {
-              const cfg = await (window.electronAPI?.getConfig?.() || Promise.resolve(null));
-              if (cfg && cfg.assets && cfg.assets.welcomeVideo) {
-                src = cfg.assets.welcomeVideo;
-              }
-            } catch (_) {}
+  <!-- NAVBAR -->
+  <header class="site-navbar">
+    <div class="site-nav-container">
+      <div class="site-logo">
+        <a href="index.html">
+          <img src="../assets/logo.webp" alt="Pixora Photorooms Logo">
+        </a>
+      </div>
 
-            // Normalize relative path from /src/ to /assets/
-            if (src.startsWith('./assets/')) src = src.replace('./assets/', '../assets/');
-            videoEl.src = src;
+      <nav class="site-nav-links">
+        <a href="index.html" class="site-nav-link">Home</a>
+        <a href="aboutus.html" class="site-nav-link">About Us</a>
+        <a href="policies.html" class="site-nav-link">Policies</a>
+        <a href="terms&conditions.html" class="site-nav-link">Terms & Conditions</a>
+      </nav>
+    </div>
+  </header>
 
-            videoEl.addEventListener('canplay', () => {
-              videoEl.style.display = 'block';
-              try { const p = videoEl.play(); if (p && typeof p.then === 'function') p.catch(() => {}); } catch (_) {}
-            }, { once: true });
-            videoEl.addEventListener('error', () => {
-              // Keep poster/background if video fails
-              videoEl.style.display = 'none';
-            }, { once: true });
-          }
-      } catch (e) {
-        const videoEl = document.getElementById('bg-video');
-        if (videoEl) videoEl.src = '../assets/welcome_screen_saver.mp4';
-      }
-      document.body.addEventListener('click', () => {
-        window.location.href = 'payment.html';
-      }, { once: true });
-    });
-  </script>
+  <!-- HERO SECTION -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <h1>
+        Your Moment.<br>
+        <span>Our Frame.</span>
+      </h1>
+
+      <p>
+        Premium photobooth experiences designed for venues, events, and unforgettable memories.
+      </p>
+
+      <div class="hero-badges">
+        <span>Signature Photobooth</span>
+        <span>Events Photobooth</span>
+        <span>Curated Events Setup</span>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <!-- Replace these with actual images later -->
+      <div class="hero-card sketch">Photobooth Setup 1</div>
+      <div class="hero-card sketch">Photobooth Setup 2</div>
+      <div class="hero-card sketch">Photobooth Setup 3</div>
+    </div>
+  </section>
+
+  <!-- SIGNATURE PHOTOROOM -->
+  <section class="site-page feature-section reveal">
+    <div class="feature-grid">
+      <div class="feature-text">
+        <h2>SIGNATURE PHOTOROOM</h2>
+        <h3>Premium Build Specifications</h3>
+
+        <ul>
+          <li><strong>Display:</strong> 21.5-inch interactive touch display</li>
+          <li><strong>Printer:</strong> DNP RX1 HS commercial-grade printer</li>
+          <li><strong>Camera:</strong> Canon EOS 1500D DSLR</li>
+          <li><strong>Print formats:</strong> 2×6, 4×6, 6×6</li>
+          <li><strong>Photo life:</strong> 100+ year archival quality</li>
+          <li><strong>Branding:</strong> Custom templates with partner logo</li>
+        </ul>
+
+        <p class="highlight">
+          100% deployment, servicing, maintenance, and periodic check-ins
+          fully handled and funded by Pixora.
+        </p>
+
+        <p class="note">
+          Themes and colors are fully customizable to match the venue’s design palette.
+        </p>
+      </div>
+
+      <div class="feature-image reveal reveal-right">
+        <!-- Replace later -->
+        <div class="image-placeholder">Signature Photobooth Image</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EVENTS PHOTOROOM -->
+  <section class="site-page feature-section alt reveal">
+    <div class="feature-grid">
+      <div class="feature-image reveal reveal-right">
+        <div class="image-placeholder">Events Photobooth Image</div>
+      </div>
+
+      <div class="feature-text">
+        <h2>EVENTS PHOTOROOM</h2>
+        <h3>Premium Build Specifications</h3>
+
+        <ul>
+          <li><strong>Display:</strong> 11-inch interactive iPad</li>
+          <li><strong>Printer:</strong> Epson / Brother color printer</li>
+          <li><strong>Camera:</strong> Canon EOS 1500D DSLR</li>
+          <li><strong>Print format:</strong> 5×7</li>
+          <li><strong>Branding:</strong> Custom event templates</li>
+        </ul>
+
+        <p class="highlight">
+          100% deployment, setup costs, and operations throughout the event
+          handled and funded by Pixora.
+        </p>
+
+        <p class="note">
+          Themes and colors are fully customizable to match the venue’s design palette.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CURATED EVENTS -->
+  <section class="site-page feature-section reveal">
+    <div class="feature-grid">
+      <div class="feature-text">
+        <h2>CURATED EVENTS SETUP</h2>
+        <h3>Your Moment, Our Frame</h3>
+
+        <p>
+          A fully tailored photobooth experience crafted specifically for your event.
+          From aesthetics to operations, Pixora handles everything end-to-end.
+        </p>
+
+        <p class="highlight">
+          100% deployment, setup, and operations throughout the event
+          handled and funded by Pixora.
+        </p>
+      </div>
+
+      <div class="feature-image reveal reveal-right">
+        <div class="image-placeholder">Curated Event Images</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="site-footer-container">
+
+      <!-- Brand / Tagline -->
+      <div>
+        <h2>Your Moment<br><span>Our Frame</span></h2>
+        <p>
+          We are a team of passionate people whose goal is to improve everyone's life.
+          Our services are designed for small to medium size companies.
+        </p>
+      </div>
+
+      <!-- Contact Info -->
+      <div>
+        <p><strong>Contact Us</strong></p>
+        <p>KC-48B, Ashok Vihar, Phase 1<br>Delhi – 110054</p>
+        <p>Phone: +91-8427347577</p>
+        <p>Email: <a href="mailto:info.pixoraphotorooms@gmail.com">
+            info.pixoraphotorooms@gmail.com
+          </a></p>
+        <p>
+          <a href="https://www.instagram.com/pixoraphotorooms?igsh=eTB5emdkdzItMXE2" target="_blank" rel="noopener">
+            Instagram
+          </a>
+        </p>
+      </div>
+
+      <!-- Legal -->
+      <div>
+        <p><strong>Legal Entity Name</strong></p>
+        <p>TEJVIR SINGH DUA AND SONS HUF</p>
+      </div>
+
+    </div>
+
+    <div class="site-footer-bottom">
+      Copyright © Pixora Photorooms
+    </div>
+  </footer>
+
 </body>
+
 </html>

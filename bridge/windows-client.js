@@ -1,6 +1,3 @@
-// Pixora Windows Bridge Client — HARD LOCK MODE
-// Guarantees: one payment per print, no taskbar, no alternation
-
 const WebSocket = require('ws');
 const { spawn } = require('child_process');
 const fs = require('fs');

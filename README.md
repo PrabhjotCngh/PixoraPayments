@@ -76,7 +76,7 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
   - On countdown end: notifies bridge and quits Pixora.
   - Retry button: goes back to payment.
 
-- `styles.css`
+- `kiosk.css`
   - Shared styles, QR loader, overlay, and highlight message.
 
 ## Electron APIs (`preload.js` → `window.electronAPI`)
