@@ -208,6 +208,34 @@
     font-size: 16px;
 }
 
+/* ---------- HERO IMAGE ---------- */
+.hero-visual {
+    display: flex;
+    justify-content: center;
+    margin-top: 48px;
+}
+
+.hero-image-wrapper {
+    max-width: 420px;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.14);
+    background: #fff;
+    transform: translateY(0);
+    transition: transform 0.35s ease;
+}
+
+.hero-image-wrapper:hover {
+    transform: translateY(-6px);
+}
+
+.hero-image-wrapper img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
 /* ---------------- FOOTER ---------------- */
 .site-footer {
     background: #0b0b0b;

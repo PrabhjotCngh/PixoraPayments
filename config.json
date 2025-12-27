@@ -27,12 +27,12 @@
   "window": {
     "width": 1200,
     "height": 800,
-    "fullscreen": false,
+    "fullscreen": true,
     "frame": false,
-    "kiosk": false,
+    "kiosk": true,
     "alwaysOnTop": true,
     "autoHideMenuBar": true,
-    "skipTaskbar": false,
+    "skipTaskbar": true,
     "resizable": false,
     "bringToFrontOnLaunch": true
   }
