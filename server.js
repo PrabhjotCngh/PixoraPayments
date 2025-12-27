@@ -123,7 +123,6 @@ app.post('/api/create-qr', async (req, res) => {
     };
     const CASHFREE_API_URL = getCashfreeOrdersBase();
 
-    // Create Cashfree order via REST (axios)
     // Always use local location_code from file
     const locationCode = getLocationCodeFromFile();
     const cfResp = await axios.post(
