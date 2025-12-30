@@ -149,14 +149,16 @@ const BRIDGE_SERVER_URL = process.env.BRIDGE_SERVER_URL;
 
 function connect() {
   const ws = new WebSocket(`${BRIDGE_SERVER_URL}?deviceId=${DEVICE_ID}`);
-  log('WS connecting');
+  log('WS connecting with deviceId=' + DEVICE_ID);
 
   ws.on('open', () => log('WS open'));
+
+  const state = readState();
+  log(`hasCredit=${state.hasCredit}`);
 
   ws.on('message', (data) => {
     const msg = JSON.parse(data.toString());
     const ev = msg.event_type;
-    const state = readState();
 
     if (state.hasCredit && !isCreditValid(state)) {
       state.hasCredit = false;
