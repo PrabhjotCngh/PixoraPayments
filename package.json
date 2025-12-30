@@ -9,7 +9,8 @@
     "build:win": "electron-builder --win",
     "dist": "electron-builder",
     "dev": "concurrently \"node server.js\" \"electron .\"",
-    "bridge:client": "node bridge/windows-client.js"
+    "bridge:client": "node bridge/windows-client.js",
+    "bridge:localClient": "node bridge/windows-clientV1.js"
   },
   "keywords": [
     "photobooth",
