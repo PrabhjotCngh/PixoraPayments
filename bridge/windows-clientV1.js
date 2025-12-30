@@ -140,8 +140,6 @@ app.get('/', (req, res) => {
 });
 
 function handleEvent(type) {
-  log('ASSERT expired credit cleared');
-
   const state = readState();
 
   if (state.hasCredit && !isCreditValid(state)) {
@@ -173,7 +171,9 @@ function handleEvent(type) {
 }
 
 app.listen(4000, () => {
-  console.log('PixoraBridge listening on https://pixora.textberry.io');
-  log('Bridge listening on https://pixora.textberry.io');
+  console.log('PixoraBridge listening on http://127.0.0.1:4000');
+  log('Bridge listening on http://127.0.0.1:4000');
   try { log(`Startup resolved Pixora exe: ${PIXORA_EXE} exists=${fs.existsSync(PIXORA_EXE)}`); } catch (_) {}
+  const state = readState();
+  log(`has credits before event=${state.hasCredit}`);
 });

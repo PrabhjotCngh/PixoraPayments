@@ -31,7 +31,7 @@
   </div>
 
   <script>
-    let countdown = 5;
+    let countdown = 3;
     let autoRedirectTimer = null;
     
     window.addEventListener('DOMContentLoaded', async () => {
@@ -76,10 +76,9 @@
         
         if (countdown <= 0) {
           clearInterval(interval);
-            try { await window.electronAPI.notifyPaymentComplete(); } catch (_) {}
-          try { await window.electronAPI.quitApp(); } catch (_) {}
+          window.location.href = 'payment.html';
         }
-      }, 1000);
+      }, 1000); 
     }
   </script>
 </body>

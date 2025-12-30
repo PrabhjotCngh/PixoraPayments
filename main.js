@@ -116,7 +116,7 @@ ipcMain.handle('get-backend-base', async () => {
   if (useLocal === 'true' || useLocal === '1') {
     return 'http://127.0.0.1:3000';
   }
-  return (config && config.bridge && config.bridge.baseUrl) ? config.bridge.baseUrl : 'https://pixora.textberry.io';
+  return (config && config.server && config.server.baseUrl) ? config.server.baseUrl : 'https://pixora.textberry.io';
 });
 
 // Quit the Pixora app on demand
