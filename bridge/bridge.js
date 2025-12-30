@@ -160,7 +160,7 @@ app.get('/', (req, res) => {
 });
 
 // POST-based event ingress to avoid caching and support richer payloads
-app.post('/event', (req, res) => {
+app.post('/admin/event', (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
   } catch (_) {}
