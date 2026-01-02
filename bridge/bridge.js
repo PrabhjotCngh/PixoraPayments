@@ -295,65 +295,6 @@ const heartbeatTimer = setInterval(() => {
   } catch (e) { log(`heartbeat error: ${e}`); }
 }, HEARTBEAT_MS);
 
-// Admin endpoints: mute/unmute events for a device or disconnect a client
-app.post('/admin/mute', (req, res) => {
-  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
-  const deviceId = (req.body && (req.body.deviceId || req.body.device_id)) || '';
-  const event = (req.body && (req.body.event_type || req.body.event)) || '';
-  const durationMs = Number((req.body && req.body.duration_ms) || 600000); // default 10min
-  if (!deviceId || !event) return res.status(400).json({ ok: false, error: 'deviceId and event_type required' });
-  setBlock(deviceId, event, durationMs);
-  log(`admin mute device=${deviceId} event=${event} durationMs=${durationMs}`);
-  res.json({ ok: true });
-});
-
-app.post('/admin/unmute', (req, res) => {
-  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
-  const deviceId = (req.body && (req.body.deviceId || req.body.device_id)) || '';
-  const event = (req.body && (req.body.event_type || req.body.event)) || '';
-  if (!deviceId) return res.status(400).json({ ok: false, error: 'deviceId required' });
-  clearBlock(deviceId, event);
-  log(`admin unmute device=${deviceId} event=${event || 'ALL'}`);
-  res.json({ ok: true });
-});
-
-app.post('/admin/disconnect', (req, res) => {
-  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
-  const deviceId = (req.body && (req.body.deviceId || req.body.device_id)) || '';
-  if (!deviceId) return res.status(400).json({ ok: false, error: 'deviceId required' });
-  const ws = clients.get(deviceId);
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    try { ws.close(4000, 'admin disconnect'); } catch (_) {}
-    clients.delete(deviceId);
-    log(`admin disconnect device=${deviceId}`);
-    return res.json({ ok: true, disconnected: true });
-  }
-  return res.json({ ok: true, disconnected: false });
-});
-
-app.post('/admin/block', (req, res) => {
-  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
-  const deviceId = (req.body && (req.body.deviceId || req.body.device_id)) || '';
-  if (!deviceId) return res.status(400).json({ ok: false, error: 'deviceId required' });
-  deviceBlacklist.add(deviceId);
-  const ws = clients.get(deviceId);
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    try { ws.close(4001, 'blacklisted'); } catch (_) {}
-    clients.delete(deviceId);
-  }
-  log(`admin block device=${deviceId}`);
-  res.json({ ok: true, blocked: true });
-});
-
-app.post('/admin/unblock', (req, res) => {
-  if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
-  const deviceId = (req.body && (req.body.deviceId || req.body.device_id)) || '';
-  if (!deviceId) return res.status(400).json({ ok: false, error: 'deviceId required' });
-  deviceBlacklist.delete(deviceId);
-  log(`admin unblock device=${deviceId}`);
-  res.json({ ok: true, blocked: false });
-});
-
 app.get('/admin/clients', (req, res) => {
   if (!isAuthorized(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
   const list = [];
