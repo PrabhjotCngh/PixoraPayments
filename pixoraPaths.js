@@ -2,14 +2,19 @@ const path = require('path');
 const os = require('os');
 
 function pixoraBaseDir() {
-  // Linux / Mac (standard)
-  if (process.env.XDG_CONFIG_HOME) {
-    return process.env.XDG_CONFIG_HOME;
+  // Windows
+  if (process.platform === 'win32' && process.env.APPDATA) {
+    return process.env.APPDATA;
   }
 
-  // Windows
-  if (process.env.APPDATA) {
-    return process.env.APPDATA;
+  // macOS: Use Application Support
+  if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support');
+  }
+
+  // Linux/Unix: Respect XDG if set, else ~/.config
+  if (process.env.XDG_CONFIG_HOME) {
+    return process.env.XDG_CONFIG_HOME;
   }
 
   // Fallback

@@ -57,28 +57,15 @@
 <body>
   <h1>Pixora Admin</h1>
   <div class="row">
-    <label>Admin Token (optional):</label>
-    <input id="token" type="text" placeholder="ADMIN_TOKEN" />
+    <label>Admin User:</label>
+    <input id="adminUser" type="text" placeholder="admin" value="admin" />
+    <label>Admin Password:</label>
+    <input id="adminPass" type="password" placeholder="password" value="password" />
     <button onclick="refreshHealth()">Refresh Health</button>
+    <button onclick="logout()" style="background:#fee;border:1px solid #f99">Logout</button>
   </div>
 
-  <form class="section" onsubmit="event.preventDefault();">
-    <h2 style="font-size:16px;">Manage socket connections</h2>
-    <label>Device ID:</label>
-    <input id="deviceId" type="text" placeholder="PIXORA_001" required />
-    <label>Event:</label>
-    <select id="eventType" required>
-      <option value="payment_complete">payment_complete</option>
-      <option value="session_start">session_start</option>
-    </select>
-    <label>Duration (ms):</label>
-    <input id="duration" type="number" value="600000" required />
-    <button type="button" onclick="mute()">Mute</button>
-    <button type="button" onclick="unmute()">Unmute</button>
-    <button type="button" onclick="disconnect()">Disconnect</button>
-    <button type="button" onclick="blockDevice()" style="background:#fee;border:1px solid #f99">Block</button>
-    <button type="button" onclick="unblockDevice()" style="background:#efe;border:1px solid #9f9">Unblock</button>
-  </form>
+
 
   <form class="section" onsubmit="event.preventDefault();">
     <h2 style="font-size:16px;">Send Event</h2>
@@ -143,71 +130,27 @@
     }
 
     function headers() {
-      const t = document.getElementById('token').value.trim();
+      const user = document.getElementById('adminUser').value.trim();
+      const pass = document.getElementById('adminPass').value.trim();
       const h = { 'Content-Type': 'application/json' };
-      if (t) h['x-admin-token'] = t;
+      if (user && pass) {
+        h['Authorization'] = 'Basic ' + btoa(user + ':' + pass);
+      }
       return h;
     }
 
-    async function mute() {
-      const deviceId = document.getElementById('deviceId').value.trim();
-      const event_type = document.getElementById('eventType').value;
-      const duration_ms = Number(document.getElementById('duration').value || 600000);
-      if (!deviceId || !event_type) return log('Provide deviceId and event');
-      try {
-        const res = await fetch('/admin/mute', {
-          method: 'POST', headers: headers(), body: JSON.stringify({ deviceId, event_type, duration_ms })
-        });
-        log('Mute result: ' + (await res.text()));
-      } catch (e) { log('Mute error: ' + e.message); }
-    }
-
-    async function unmute() {
-      const deviceId = document.getElementById('deviceId').value.trim();
-      const event_type = document.getElementById('eventType').value;
-      if (!deviceId) return log('Provide deviceId');
-      try {
-        const res = await fetch('/admin/unmute', {
-          method: 'POST', headers: headers(), body: JSON.stringify({ deviceId, event_type })
-        });
-        log('Unmute result: ' + (await res.text()));
-      } catch (e) { log('Unmute error: ' + e.message); }
-    }
-
-    async function disconnect() {
-      const deviceId = document.getElementById('deviceId').value.trim();
-      if (!deviceId) return log('Provide deviceId');
-      try {
-        const res = await fetch('/admin/disconnect', {
-          method: 'POST', headers: headers(), body: JSON.stringify({ deviceId })
-        });
-        log('Disconnect result: ' + (await res.text()));
-        refreshHealth();
-      } catch (e) { log('Disconnect error: ' + e.message); }
-    }
-
-    async function blockDevice() {
-      const deviceId = document.getElementById('deviceId').value.trim();
-      if (!deviceId) return log('Provide deviceId');
-      try {
-        const res = await fetch('/admin/block', {
-          method: 'POST', headers: headers(), body: JSON.stringify({ deviceId })
-        });
-        log('Block result: ' + (await res.text()));
-        refreshHealth();
-      } catch (e) { log('Block error: ' + e.message); }
-    }
-
-    async function unblockDevice() {
-      const deviceId = document.getElementById('deviceId').value.trim();
-      if (!deviceId) return log('Provide deviceId');
-      try {
-        const res = await fetch('/admin/unblock', {
-          method: 'POST', headers: headers(), body: JSON.stringify({ deviceId })
-        });
-        log('Unblock result: ' + (await res.text()));
-        refreshHealth();
-      } catch (e) { log('Unblock error: ' + e.message); }
+    function logout() {
+      // Send request with invalid credentials to clear cached auth
+      fetch('/admin/logout', {
+        method: 'GET',
+        headers: { 'Authorization': 'Basic ' + btoa('logout:logout') }
+      }).then(() => {
+        // Reload page to trigger auth prompt
+        window.location.reload();
+      }).catch(() => {
+        // Always reload even on error
+        window.location.reload();
+      });
     }
 
     async function sendEvent() {
@@ -235,7 +178,7 @@
     }
 
     async function launchPayment() {
-      const deviceId = document.getElementById('sendDeviceId').value.trim() || document.getElementById('deviceId').value.trim();
+      const deviceId = document.getElementById('sendDeviceId').value.trim();
       if (!deviceId) return log('Provide deviceId to launch payment');
       try {
         const res = await fetch('/admin/launch_payment', { method: 'POST', headers: headers(), body: JSON.stringify({ deviceId }) });
@@ -244,7 +187,7 @@
     }
 
     async function renameDeviceId() {
-      const currentId = document.getElementById('renameCurrentId').value.trim() || document.getElementById('deviceId').value.trim();
+      const currentId = document.getElementById('renameCurrentId').value.trim();
       const newId = document.getElementById('renameNewId').value.trim();
       if (!currentId || !newId) return log('Provide currentId and newId');
       try {

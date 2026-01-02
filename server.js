@@ -10,10 +10,56 @@ const path = require('path');
 const fs = require('fs');
 const app = express();
 app.use(express.json());
+// Disable automatic ETag generation to avoid 304 responses on dynamic endpoints
+try { app.set('etag', false); } catch (_) { }
 
 // Serve static files from src directory
 app.use(express.static(path.join(__dirname, 'src')));
 console.log('Serving static from:', path.join(__dirname, 'src'));
+
+// Also serve bridge directory at /bridge for convenience
+try {
+  const bridgeDir = path.join(__dirname, 'bridge');
+  if (fs.existsSync(bridgeDir)) {
+    app.use('/bridge', express.static(bridgeDir));
+  }
+} catch (_) { }
+
+// Basic auth middleware for /admin routes
+const ADMIN_USER = process.env.ADMIN_BASIC_USER || 'admin';
+const ADMIN_PASS = process.env.ADMIN_BASIC_PASS || 'password';
+
+function adminAuth(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Basic ')) {
+    res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
+    return res.status(401).send('Authentication required.');
+  }
+  const b64 = auth.split(' ')[1];
+  const [user, pass] = Buffer.from(b64, 'base64').toString().split(':');
+  if (user === ADMIN_USER && pass === ADMIN_PASS) return next();
+  res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
+  return res.status(401).send('Invalid credentials.');
+}
+
+// Map /admin.html to existing file in src or bridge/admin.html with authentication
+app.get('/admin.html', adminAuth, (req, res) => {
+  try {
+    const srcAdmin = path.join(__dirname, 'src', 'admin.html');
+    if (fs.existsSync(srcAdmin)) return res.sendFile(srcAdmin);
+  } catch (_) { }
+  try {
+    const bridgeAdmin = path.join(__dirname, 'bridge', 'admin.html');
+    if (fs.existsSync(bridgeAdmin)) return res.sendFile(bridgeAdmin);
+  } catch (_) { }
+  return res.status(404).send('admin.html not found');
+});
+
+// Logout endpoint - always returns 401 to clear cached credentials
+app.get('/admin/logout', (req, res) => {
+  res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
+  res.status(401).send('Logged out');
+});
 
 // Curl-style request/response logging to console
 app.use((req, res, next) => {
@@ -63,7 +109,7 @@ function getLocationCodeFromFile() {
     const f = path.join(pixoraDir(), 'location-code.txt');
     if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8').trim();
   } catch (e) {
-    log(`location_code file read error: ${e}`);
+    try { console.warn('location_code file read error:', e?.message || e); } catch (_) { }
   }
   return 'HKV'; // default
 }
@@ -210,23 +256,6 @@ app.get('/api/check-payment/:id', async (req, res) => {
   }
 });
 
-// Basic auth middleware for /admin routes
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASS = process.env.ADMIN_PASS || 'password';
-
-function adminAuth(req, res, next) {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Basic ')) {
-    res.set('WWW-Authenticate', 'Basic realm=\"Admin Area\"');
-    return res.status(401).send('Authentication required.');
-  }
-  const b64 = auth.split(' ')[1];
-  const [user, pass] = Buffer.from(b64, 'base64').toString().split(':');
-  if (user === ADMIN_USER && pass === ADMIN_PASS) return next();
-  res.set('WWW-Authenticate', 'Basic realm=\"Admin Area\"');
-  return res.status(401).send('Invalid credentials.');
-}
-
 // Apply to all /admin routes
 app.use('/admin', adminAuth);
 
@@ -248,8 +277,34 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Start server
-app.listen(3000, () => {
-  console.log(`Webhook server running on https://pixora.textberry.io`);
-  console.log(`Health check: https://pixora.textberry.io/health`);
+// Start server with diagnostics
+const server = app.listen(3000, () => {
+  try {
+    const addr = server.address();
+    if (typeof addr === 'string') {
+      console.log(`Server listening at ${addr}`);
+      console.log(`Health check: ${addr}/health`);
+    } else {
+      const url = `http://127.0.0.1:${addr.port}`;
+      console.log(`Server listening at ${url}`);
+      console.log(`Health check: ${url}/health`);
+    }
+  } catch (e) {
+    console.log('Server started');
+  }
+});
+
+server.on('error', (err) => {
+  console.error('Server error:', err);
+});
+
+server.on('close', () => {
+  console.warn('Server closed');
+});
+
+process.on('uncaughtException', (err) => {
+  try { console.error('Uncaught exception:', err); } catch (_) { }
+});
+process.on('unhandledRejection', (reason, promise) => {
+  try { console.error('Unhandled rejection:', reason); } catch (_) { }
 });
