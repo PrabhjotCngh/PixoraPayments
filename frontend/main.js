@@ -4,7 +4,7 @@ const { spawn } = require('child_process');
 const os = require('os');
 const fs = require('fs');
 const crypto = require('crypto');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Allow autoplay with sound without user gesture (Chromium policy)
 try { app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required'); } catch (e) { }
@@ -12,6 +12,7 @@ try { app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required'
 let mainWindow;
 let serverProcess;
 const appConfig = require('./config.json');
+const { pixoraDir } = require('../backend/pixoraPaths');
 const winCfg = (appConfig && appConfig.window) ? appConfig.window : {};
 // Honor CLI flags like --bring-to-front (useful when launched by bridge)
 const cliBringToFront = process.argv && process.argv.includes('--bring-to-front');
@@ -37,7 +38,7 @@ function createWindow() {
     autoHideMenuBar: !!winCfg.autoHideMenuBar,
     skipTaskbar: !!winCfg.skipTaskbar,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, './preload.js'),
       contextIsolation: true,
       nodeIntegration: false
     },
@@ -45,7 +46,7 @@ function createWindow() {
   });
 
   // Load index/welcome screen first
-  mainWindow.loadFile('src/payment.html');
+  mainWindow.loadFile('./src/payment.html');
 
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(false);
