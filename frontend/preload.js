@@ -69,11 +69,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setDeviceId: (newId) => ipcRenderer.invoke('set-device-id', newId),
 
   // Payment APIs
-  createQRCode: async (amount, description) => {
+  createOrder: async (amount, description) => {
     const base = await ipcRenderer.invoke('get-backend-base');
-    // Best-effort: wait briefly for backend health on first launch
-    //try { await ensureBackendReady(); } catch (_) {}
-    const url = `${base}/api/create-qr`;
+    const url = `${base}/api/create-order`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -82,9 +80,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return res.json();
   },
 
-  checkPayment: async (qrCodeId) => {
+  getOrder: async (orderId) => {
     const base = await ipcRenderer.invoke('get-backend-base');
-    const url = `${base}/api/check-payment/${encodeURIComponent(qrCodeId)}`;
+    const url = `${base}/api/get-order/${encodeURIComponent(orderId)}`;
     const res = await fetch(url);
     return res.json();
   }

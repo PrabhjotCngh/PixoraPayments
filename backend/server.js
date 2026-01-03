@@ -1,11 +1,9 @@
 const express = require('express');
 const axios = require('axios');
-const crypto = require('crypto');
 require('dotenv').config();
 const appConfig = require('../frontend/config.json');
 const { pixoraDir } = require('./pixoraPaths');
 
-const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const app = express();
@@ -47,7 +45,7 @@ app.get('/admin.html', adminAuth, (req, res) => {
   try {
     const srcAdmin = path.join(__dirname, '../frontend/src', 'admin.html');
     if (fs.existsSync(srcAdmin)) return res.sendFile(srcAdmin);
-  } catch (_) {}
+  } catch (_) { }
   try {
     const bridgeAdmin = path.join(__dirname, './bridge', 'admin.html');
     if (fs.existsSync(bridgeAdmin)) return res.sendFile(bridgeAdmin);
@@ -103,36 +101,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// Helper to read location_code from file
-function getLocationCodeFromFile() {
-  try {
-    const f = path.join(pixoraDir(), 'location-code.txt');
-    if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8').trim();
-  } catch (e) {
-    try { console.warn('location_code file read error:', e?.message || e); } catch (_) { }
-  }
-  return 'HKV'; // default
-}
-
 // API to get device_id from file
 app.get('/api/device_id_file', (req, res) => {
   try {
     const file = path.join(pixoraDir(), 'device-id.txt');
 
-    console.log('Reading device-id from:', file);
-
     if (!fs.existsSync(file)) {
-      console.log('File does not exist');
       return res.status(404).json({ error: 'Device ID not found' });
     }
 
-    const v = fs.readFileSync(file, 'utf8').trim();
-    if (!v) {
-      console.log('File empty');
+    const deviceId = fs.readFileSync(file, 'utf8').trim();
+    if (!deviceId) {
       return res.status(404).json({ error: 'Device ID empty' });
     }
 
-    return res.status(404).json({ error: 'Device ID not found' });
+    return res.json({ success: true, deviceId });
   } catch (e) {
     console.error('device_id_file error:', e);
     return res.status(500).json({ error: 'Error reading device ID file' });
@@ -152,109 +135,12 @@ app.post('/admin/save_location_code', adminAuth, (req, res) => {
     res.json({ success: true, location_code });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
-  } s.status(500).json({ success: false, error: e.message });
-});
-
-// Create QR Code for UPI payment
-app.post('/api/create-qr', async (req, res) => {
-  try {
-    const { amount, description } = req.body;
-    const orderId = `order_${Date.now()}`;
-
-    const getCashfreeOrdersBase = () => {
-      const isProd = process.env.CASHFREE_ENV === 'production';
-      const cfgBase = appConfig && appConfig.cashfree && appConfig.cashfree.apiBase;
-      if (isProd) return (cfgBase && cfgBase.production) || 'https://api.cashfree.com/pg/orders';
-      return (cfgBase && cfgBase.sandbox) || 'https://sandbox.cashfree.com/pg/orders';
-    };
-    const CASHFREE_API_URL = getCashfreeOrdersBase();
-
-    // Always use local location_code from file
-    const locationCode = getLocationCodeFromFile();
-    const cfResp = await axios.post(
-      CASHFREE_API_URL,
-      {
-        order_id: orderId,
-        order_amount: (amount / 100).toFixed(2),
-        order_currency: 'INR',
-        order_note: description || 'Pixora Photorooms Session',
-        customer_details: {
-          customer_id: `customer_${Date.now()}`,
-          customer_phone: '9999999999'
-        },
-        order_meta: {
-          return_url: 'https://pixora.textberry.io/thankyou.html?order_id=' + encodeURIComponent(orderId)
-        },
-        order_tag: {
-          location_code: locationCode
-        }
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-client-id': process.env.CASHFREE_APP_ID,
-          'x-client-secret': process.env.CASHFREE_SECRET_KEY,
-          'x-api-version': process.env.CASHFREE_API_VERSION || '2025-01-01'
-        }
-      }
-    );
-
-    const data = cfResp.data;
-
-    // Prepare QR data for frontend
-    const qrData = {
-      order_id: data.order_id,
-      payment_session_id: data.payment_session_id,
-      env: process.env.CASHFREE_ENV,
-      order_code: data.order_code
-    };
-
-    console.log('Cashfree order created (REST):', orderId);
-    res.json({ success: true, qrCode: qrData });
-  } catch (error) {
-    const errPayload = error?.response?.data || { message: error.message };
-    console.error('Error creating QR (REST):', errPayload);
-    res.status(500).json({ success: false, error: 'Failed to generate QR', details: errPayload });
   }
 });
 
-// Check payment status
-app.get('/api/check-payment/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Fetch order status from Cashfree via REST (matches your working curl)
-    const getCashfreeOrdersBase = () => {
-      const isProd = process.env.CASHFREE_ENV === 'production';
-      const cfgBase = appConfig && appConfig.cashfree && appConfig.cashfree.apiBase;
-      if (isProd) return (cfgBase && cfgBase.production) || 'https://api.cashfree.com/pg/orders';
-      return (cfgBase && cfgBase.sandbox) || 'https://sandbox.cashfree.com/pg/orders';
-    };
-    const CASHFREE_API_BASE = getCashfreeOrdersBase();
-
-    const cfResp = await axios.get(`${CASHFREE_API_BASE}/${encodeURIComponent(id)}`, {
-      headers: {
-        'x-client-id': process.env.CASHFREE_APP_ID,
-        'x-client-secret': process.env.CASHFREE_SECRET_KEY,
-        'x-api-version': process.env.CASHFREE_API_VERSION || '2025-01-01'
-      }
-    });
-
-    const data = cfResp.data;
-    const orderStatus = data.order_status;
-
-    if (orderStatus === 'PAID') {
-      console.log('Payment successful for order:', id);
-      return res.json({ success: true, paid: true, orderAmount: data.order_amount });
-    }
-
-    return res.json({ success: true, paid: false, status: orderStatus, orderAmount: data.order_amount });
-  } catch (error) {
-    const errPayload = error?.response?.data || { message: error.message };
-    console.error('Error checking payment (REST):', errPayload);
-    res.status(500).json({ success: false, error: 'Failed to check payment', details: errPayload });
-  }
-});
+// Get order status route
+const getOrderRouter = require('./routes/getOrder');
+app.use('/api', getOrderRouter);
 
 // Apply to all /admin routes
 app.use('/admin', adminAuth);
@@ -262,6 +148,22 @@ app.use('/admin', adminAuth);
 // Mount admin booth routes
 const adminBoothsRouter = require('./routes/adminBooths');
 app.use('/admin', adminBoothsRouter);
+
+// Booth authentication middleware
+const authenticateBooth = require('./middleware/authenticateBooth');
+
+// Mount create-order route (secured with booth authentication)
+const createOrderRouter = require('./routes/createOrder');
+app.use('/api', createOrderRouter);
+
+// Test endpoint to verify booth authentication
+app.get('/api/booth/info', authenticateBooth, (req, res) => {
+  res.json({
+    success: true,
+    message: 'Booth authenticated successfully',
+    booth: req.booth
+  });
+});
 
 // Health check
 app.get('/health', (req, res) => {

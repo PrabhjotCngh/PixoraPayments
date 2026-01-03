@@ -86,8 +86,8 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 - `getDeviceId()`: returns the stable per-machine device identifier used by the hosted bridge. Priority: `.env` `DEVICE_ID` → persisted file → hostname. The app auto-creates and persists a random UUID at `%APPDATA%/../Roaming/<AppData>/PixoraPayments/device-id.txt` (Electron `userData`) if none exists.
 - `setDeviceId(newId)`: validates and persists the Device ID to the Electron `userData` path (e.g., `%APPDATA%/PixoraPayments/device-id.txt`), returning `{ success, deviceId }`.
 - `getCashfreeEnv()`: read `CASHFREE_ENV` from `.env` (`sandbox`|`production`).
-- `createQRCode(amount, description)`: backend call to create order.
-- `checkPayment(orderId)`: backend call to check payment status.
+- `createOrder(amount, description)`: backend call to create order.
+- `getOrder(orderId)`: backend call to get order status.
 - Backend base selection: payment API calls resolve the base via IPC (`get-backend-base`). When `USE_LOCAL_BACKEND=true`, calls go to `http://127.0.0.1:3000`; otherwise they use the hosted domain from config (`bridge.baseUrl`).
 - `quitApp()`: closes the Electron app.
 - `notifyPaymentComplete()`: reads `bridge.baseUrl` from config and calls `{baseUrl}?event_type=payment_complete&deviceId=<auto>`. The `deviceId` is auto-picked in the same order as `getDeviceId()` (env → persisted file → hostname).
@@ -114,11 +114,63 @@ USE_LOCAL_BACKEND=false
 - Effect: payment APIs hit the hosted domain from config (`bridge.baseUrl`, e.g., `https://pixora.textberry.io`).
 - Verify: open `https://pixora.textberry.io/health`.
 
-## Backend (`server.js`)
+## Backend (`backend/server.js`)
 
-- `POST /api/create-qr`: creates Cashfree order and returns QR details. Response includes `env` (`sandbox`|`production`), `payment_session_id`, optional `image_url`, and `payment_link`.
-- `GET /api/check-payment/:orderId`: returns success and amount so UI can verify.
-- Webhook endpoint (optional): for signature-verified updates in production.
+### Secure Booth Payment API
+
+**Authentication Required:** All order creation endpoints require booth authentication via Bearer token.
+
+- `POST /api/create-order`: Creates Cashfree order with booth authentication
+  - **Headers:**
+    - `Authorization: Bearer <booth_api_key>` (required)
+    - `X-Idempotency-Key: <uuid>` (required for duplicate prevention)
+  - **Body:** `{ amount: number (paise), description: string }`
+  - **Response:** Order details with `payment_session_id`, `order_id`, location tagged automatically
+  - **Security:**
+    - Location key injected server-side from authenticated booth (tamper-proof)
+    - Idempotency prevents duplicate charges on retry
+    - Amount limited to ₹200 per transaction
+    - All orders tagged with `order_tags.location_code` for revenue tracking
+
+### Admin APIs (Basic Auth Required)
+
+- `GET /admin/booths`: List all booths or filter by location
+- `POST /admin/booths`: Create new booth (generates API key automatically)
+- `PUT /admin/booths/:id`: Update booth details or status
+- `DELETE /admin/booths/:id`: Deactivate booth
+- `POST /admin/booths/:id/regenerate-key`: Generate new API key for booth
+
+### Public APIs
+
+- `GET /api/get-order/:orderId`: Get order status from Cashfree (no authentication required)
+- `GET /health`: System diagnostics and environment info
+
+### Database Schema
+
+**Locations Table:**
+- `location_key` (unique): Location identifier (e.g., HKV, CP, GK)
+- `location_name`: Display name
+- `city`: City name
+- `active`: Whether location accepts new booths
+
+**Booths Table:**
+- `id` (UUID): Unique booth identifier
+- `booth_name`: Display name
+- `api_key`: Bearer token (format: `bth_live_<64-char-hex>`)
+- `location_key`: Foreign key to locations
+- `status`: active | inactive | maintenance
+- `last_seen_at`: Heartbeat timestamp (auto-updated on API calls)
+
+**Orders Table:**
+- `id` (UUID): Internal order ID
+- `booth_id`: Foreign key to booths
+- `order_id`: Cashfree order ID
+- `location_key`: Location code (for revenue segregation)
+- `amount`: Amount in paise
+- `cashfree_order_id`: Cashfree's CF order ID
+- `status`: pending | paid | failed
+- `idempotency_key`: UUID for duplicate prevention
+- `order_code`: Cashfree order code (if provided)
 
 ### Health Endpoint
 
