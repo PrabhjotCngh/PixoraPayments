@@ -36,7 +36,7 @@
 
     async function generateQRCode(amountInRupees) {
       try {
-        const res = await window.electronAPI.createQRCode(
+        const res = await window.electronAPI.createOrder(
           amountInRupees * 100,
           'Pixora Photo Session'
         );

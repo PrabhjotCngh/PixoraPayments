@@ -21,9 +21,9 @@
             return params.get('order_id');
         }
 
-        async function checkPayment(orderId) {
+        async function getOrder(orderId) {
             try {
-                const response = await fetch(`/api/check-payment/${encodeURIComponent(orderId)}`);
+                const response = await fetch(`/api/get-order/${encodeURIComponent(orderId)}`);
                 const data = await response.json();
                 if (data.success && data.paid) {
                     window.location.replace('success.html');
@@ -38,7 +38,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const orderId = getOrderIdFromUrl();
             if (orderId) {
-                checkPayment(orderId);
+                getOrder(orderId);
             } else {
                 window.location.replace('failure.html');
             }
