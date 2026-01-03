@@ -2,15 +2,16 @@
   "name": "pixorapayments",
   "version": "1.0.0",
   "description": "Photobooth Payment Launcher with Cashfree UPI Integration",
-  "main": "main.js",
+  "main": "frontend/main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "dist": "electron-builder",
-    "dev": "concurrently \"node server.js\" \"electron .\"",
-    "bridge:client": "node bridge/windows-client.js",
-    "bridge:localClient": "node bridge/windows-clientV1.js"
+    "dev": "concurrently \"node backend/server.js\" \"electron .\"",
+    "server": "node backend/server.js",
+    "bridge:client": "node backend/bridge/windows-client.js",
+    "bridge:localClient": "node backend/bridge/windows-clientV1.js"
   },
   "keywords": [
     "photobooth",
@@ -52,6 +53,8 @@
     "cashfree-pg": "^5.1.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "pg": "^8.16.3",
+    "uuid": "^13.0.0",
     "ws": "^8.14.2"
   },
   "devDependencies": {

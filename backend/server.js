@@ -2,7 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
 require('dotenv').config();
-const appConfig = require('./config.json');
+const appConfig = require('../frontend/config.json');
 const { pixoraDir } = require('./pixoraPaths');
 
 const os = require('os');
@@ -14,12 +14,12 @@ app.use(express.json());
 try { app.set('etag', false); } catch (_) { }
 
 // Serve static files from src directory
-app.use(express.static(path.join(__dirname, 'src')));
-console.log('Serving static from:', path.join(__dirname, 'src'));
+app.use(express.static(path.join(__dirname, '../frontend/src')));
+console.log('Serving static from:', path.join(__dirname, '../frontend/src'));
 
 // Also serve bridge directory at /bridge for convenience
 try {
-  const bridgeDir = path.join(__dirname, 'bridge');
+  const bridgeDir = path.join(__dirname, './bridge');
   if (fs.existsSync(bridgeDir)) {
     app.use('/bridge', express.static(bridgeDir));
   }
@@ -45,11 +45,11 @@ function adminAuth(req, res, next) {
 // Map /admin.html to existing file in src or bridge/admin.html with authentication
 app.get('/admin.html', adminAuth, (req, res) => {
   try {
-    const srcAdmin = path.join(__dirname, 'src', 'admin.html');
+    const srcAdmin = path.join(__dirname, '../frontend/src', 'admin.html');
     if (fs.existsSync(srcAdmin)) return res.sendFile(srcAdmin);
-  } catch (_) { }
+  } catch (_) {}
   try {
-    const bridgeAdmin = path.join(__dirname, 'bridge', 'admin.html');
+    const bridgeAdmin = path.join(__dirname, './bridge', 'admin.html');
     if (fs.existsSync(bridgeAdmin)) return res.sendFile(bridgeAdmin);
   } catch (_) { }
   return res.status(404).send('admin.html not found');
@@ -258,6 +258,10 @@ app.get('/api/check-payment/:id', async (req, res) => {
 
 // Apply to all /admin routes
 app.use('/admin', adminAuth);
+
+// Mount admin booth routes
+const adminBoothsRouter = require('./routes/adminBooths');
+app.use('/admin', adminBoothsRouter);
 
 // Health check
 app.get('/health', (req, res) => {
