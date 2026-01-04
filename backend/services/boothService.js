@@ -93,7 +93,7 @@ async function updateBoothLastSeen(boothId) {
  */
 async function listBoothsByLocation(locationKey) {
   const result = await db.query(
-    'SELECT id, booth_name, api_key, location_key, status, last_seen_at, created_at FROM booths WHERE location_key = $1 ORDER BY created_at DESC',
+    'SELECT id, booth_name, api_key, location_key, status, last_seen_at, created_at FROM booths WHERE UPPER(location_key) = UPPER($1) ORDER BY created_at DESC',
     [locationKey]
   );
   return result.rows;

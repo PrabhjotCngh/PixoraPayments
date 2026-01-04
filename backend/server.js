@@ -35,6 +35,7 @@ function adminAuth(req, res, next) {
   }
   const b64 = auth.split(' ')[1];
   const [user, pass] = Buffer.from(b64, 'base64').toString().split(':');
+  console.log(`[DEBUG] Admin auth attempt - Expected: ${ADMIN_USER}:${ADMIN_PASS}, Received: ${user}:${pass}`);
   if (user === ADMIN_USER && pass === ADMIN_PASS) return next();
   res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
   return res.status(401).send('Invalid credentials.');

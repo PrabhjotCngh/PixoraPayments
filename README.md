@@ -13,8 +13,6 @@ Electron app that collects payment (via Cashfree QR) or uses a static QR, then h
 
 ## Config Highlights (`config.json`)
 
-- `payment.usePaymentGateway`: `true` for Cashfree gateway; `false` for static QR.
-- `payment.qrCodeExpiryMinutes`: minutes for QR validity (timer and failure redirect).
 - `assets.staticQrImage`: path to the static QR image used when gateway is off.
 - `assets.welcomeVideo`: background video for index page.
 - `bridge.baseUrl`: base URL for the Windows bridge (default `https://pixora.textberry.io`).

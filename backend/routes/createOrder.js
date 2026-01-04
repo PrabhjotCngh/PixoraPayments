@@ -113,7 +113,7 @@ router.post('/create-order', authenticateBooth, async (req, res) => {
 
   } catch (error) {
     console.error('Error in /api/create-order:', error);
-    
+
     // Handle Cashfree API errors specifically
     if (error.message.includes('Cashfree')) {
       return res.status(502).json({
