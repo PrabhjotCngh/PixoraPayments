@@ -1,8 +1,6 @@
 {
   "payment": {
-    "amountInRupees": 200,
-    "qrCodeExpiryMinutes": 0.2,
-    "usePaymentGateway": true
+    "amountInRupees": 200
   },
   "screens": {
     "successDuration": 3000,

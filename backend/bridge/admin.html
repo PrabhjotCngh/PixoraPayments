@@ -60,7 +60,7 @@
     <label>Admin User:</label>
     <input id="adminUser" type="text" placeholder="admin" value="admin" />
     <label>Admin Password:</label>
-    <input id="adminPass" type="password" placeholder="password" value="password" />
+    <input id="adminPass" type="password" placeholder="password" value="pixoraEC2AdminPassword" />
     <button onclick="refreshHealth()">Refresh Health</button>
     <button onclick="logout()" style="background:#fee;border:1px solid #f99">Logout</button>
   </div>
@@ -102,6 +102,85 @@
     <input id="updateLocationCode" type="text" placeholder="Location Code" required />
     <button type="button" onclick="saveLocationCode()">Save Location Code</button>
   </form>
+
+  <!-- Booth Management Section -->
+  <div class="section" style="margin-top:24px;border-top:2px solid #ddd;padding-top:16px;">
+    <h2 style="font-size:18px;margin-bottom:12px;">Booth Management</h2>
+
+    <!-- Create New Booth Form -->
+    <form onsubmit="event.preventDefault();createBooth();"
+      style="background:#f9f9fb;padding:12px;border-radius:6px;margin-bottom:16px;">
+      <h3 style="font-size:14px;margin:0 0 8px 0;">Create New Booth</h3>
+      <div class="row">
+        <label>Booth Name:</label>
+        <input id="newBoothName" type="text" placeholder="e.g., HKV Main Booth" required style="width:200px;" />
+        <label>Location Key:</label>
+        <input id="newLocationKey" type="text" placeholder="e.g., HKV001" required style="width:150px;" />
+        <button type="submit" style="background:#007aff;color:white;border:none;">Create Booth</button>
+      </div>
+    </form>
+
+    <!-- Filter Options -->
+    <div class="row" style="margin-bottom:12px;">
+      <label>Filter by Location:</label>
+      <input id="filterLocationKey" type="text" placeholder="Leave empty for all" style="width:150px;" />
+      <button onclick="loadBooths()" style="background:#34c759;color:white;border:none;">Load Booths</button>
+    </div>
+
+    <!-- Booths Table -->
+    <div style="overflow-x:auto;">
+      <table id="boothsTable" style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f5f5f7;text-align:left;">
+            <th style="padding:8px;border:1px solid #ddd;">Booth Name</th>
+            <th style="padding:8px;border:1px solid #ddd;">Location Key</th>
+            <th style="padding:8px;border:1px solid #ddd;">API Key</th>
+            <th style="padding:8px;border:1px solid #ddd;">Status</th>
+            <th style="padding:8px;border:1px solid #ddd;">Last Seen</th>
+            <th style="padding:8px;border:1px solid #ddd;">Created</th>
+            <th style="padding:8px;border:1px solid #ddd;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="boothsTableBody">
+          <tr>
+            <td colspan="7" style="padding:16px;text-align:center;color:#999;">Click "Load Booths" to fetch data</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Edit Modal (Hidden by default) -->
+    <div id="editModal"
+      style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:24px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:1000;min-width:400px;">
+      <h3 style="margin-top:0;">Edit Booth</h3>
+      <input type="hidden" id="editBoothId" />
+      <div class="row">
+        <label>Booth Name:</label>
+        <input id="editBoothName" type="text" style="width:100%;max-width:300px;" />
+      </div>
+      <div class="row">
+        <label>Location Key:</label>
+        <input id="editLocationKey" type="text"
+          style="width:100%;max-width:300px;background:#f5f5f7;cursor:not-allowed;" disabled readonly />
+      </div>
+      <div class="row">
+        <label>Status:</label>
+        <select id="editStatus" style="width:100%;max-width:300px;">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="maintenance">Maintenance</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:16px;">
+        <button onclick="updateBooth()" style="background:#007aff;color:white;border:none;">Save Changes</button>
+        <button onclick="closeEditModal()" style="background:#ddd;border:none;">Cancel</button>
+      </div>
+    </div>
+    <div id="modalBackdrop"
+      style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;"
+      onclick="closeEditModal()"></div>
+  </div>
+
   <div class="devices" id="devices"></div>
   <div class="devices" id="blocked"></div>
   <h3>Logs</h3>
@@ -246,6 +325,204 @@
         }
       } catch (e) {
         log('SaveLocationCode error: ' + e.message);
+      }
+    }
+
+    // ============ BOOTH MANAGEMENT FUNCTIONS ============
+
+    async function loadBooths() {
+      try {
+        const locationKey = document.getElementById('filterLocationKey').value.trim();
+        const url = locationKey ? `/admin/booths?location_key=${encodeURIComponent(locationKey)}` : '/admin/booths';
+
+        const res = await fetch(url, { headers: headers() });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to load booths');
+        }
+
+        displayBooths(data.booths);
+        log(`Loaded ${data.count} booth(s)`);
+      } catch (e) {
+        log('LoadBooths error: ' + e.message);
+        document.getElementById('boothsTableBody').innerHTML =
+          '<tr><td colspan="7" style="padding:16px;text-align:center;color:#f66;">Error loading booths: ' + e.message + '</td></tr>';
+      }
+    }
+
+    function displayBooths(booths) {
+      const tbody = document.getElementById('boothsTableBody');
+      if (!booths || booths.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:16px;text-align:center;color:#999;">No booths found</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = booths.map(booth => {
+        const statusColor = booth.status === 'active' ? '#34c759' :
+          booth.status === 'maintenance' ? '#ff9500' : '#999';
+        const lastSeen = booth.last_seen_at ? new Date(booth.last_seen_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never';
+        const created = new Date(booth.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const apiKeyDisplay = booth.api_key.substring(0, 20) + '...';
+
+        return `
+          <tr>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(booth.booth_name)}</td>
+            <td style="padding:8px;border:1px solid #ddd;"><code>${escapeHtml(booth.location_key)}</code></td>
+            <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:11px;" title="${escapeHtml(booth.api_key)}">${apiKeyDisplay}</td>
+            <td style="padding:8px;border:1px solid #ddd;">
+              <span style="display:inline-block;padding:2px 6px;background:${statusColor};color:white;border-radius:3px;font-size:11px;">${booth.status.toUpperCase()}</span>
+            </td>
+            <td style="padding:8px;border:1px solid #ddd;font-size:11px;">${lastSeen}</td>
+            <td style="padding:8px;border:1px solid #ddd;font-size:11px;">${created}</td>
+            <td style="padding:8px;border:1px solid #ddd;">
+              <button onclick='editBooth(${JSON.stringify(booth)})' style="font-size:11px;padding:4px 8px;margin:2px;">Edit</button>
+              <button onclick='regenerateKey("${booth.id}", "${escapeHtml(booth.booth_name)}")' style="font-size:11px;padding:4px 8px;background:#ff9500;color:white;border:none;margin:2px;">Regenerate Key</button>
+              <button onclick='deleteBooth("${booth.id}", "${escapeHtml(booth.booth_name)}")' style="font-size:11px;padding:4px 8px;background:#ff3b30;color:white;border:none;margin:2px;">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function createBooth() {
+      const boothName = document.getElementById('newBoothName').value.trim();
+      const locationKey = document.getElementById('newLocationKey').value.trim();
+
+      if (!boothName || !locationKey) {
+        log('Booth name and location key are required');
+        return;
+      }
+
+      try {
+        const res = await fetch('/admin/booths', {
+          method: 'POST',
+          headers: headers(),
+          body: JSON.stringify({ booth_name: boothName, location_key: locationKey })
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to create booth');
+        }
+
+        log(`✓ Created booth: ${boothName}`);
+        document.getElementById('newBoothName').value = '';
+        document.getElementById('newLocationKey').value = '';
+        loadBooths();
+      } catch (e) {
+        log('CreateBooth error: ' + e.message);
+      }
+    }
+
+    function editBooth(booth) {
+      document.getElementById('editBoothId').value = booth.id;
+      document.getElementById('editBoothName').value = booth.booth_name;
+      document.getElementById('editLocationKey').value = booth.location_key;
+      document.getElementById('editStatus').value = booth.status;
+      document.getElementById('editModal').style.display = 'block';
+      document.getElementById('modalBackdrop').style.display = 'block';
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').style.display = 'none';
+      document.getElementById('modalBackdrop').style.display = 'none';
+    }
+
+    async function updateBooth() {
+      const boothId = document.getElementById('editBoothId').value;
+      const boothName = document.getElementById('editBoothName').value.trim();
+      const status = document.getElementById('editStatus').value;
+
+      console.log('UpdateBooth - boothId:', boothId, 'name:', boothName, 'status:', status);
+
+      try {
+        const body = {};
+        if (boothName) body.booth_name = boothName;
+        if (status) body.status = status;
+
+        if (Object.keys(body).length === 0) {
+          log('No fields to update');
+          return;
+        }
+
+        console.log('Sending PUT request with body:', body);
+
+        const res = await fetch(`/admin/booths/${boothId}`, {
+          method: 'PUT',
+          headers: headers(),
+          body: JSON.stringify(body)
+        });
+
+        console.log('Response status:', res.status);
+        const data = await res.json();
+        console.log('Response data:', data);
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || `HTTP ${res.status}: Failed to update booth`);
+        }
+
+        log('✓ Booth updated successfully');
+        closeEditModal();
+        loadBooths();
+      } catch (e) {
+        console.error('UpdateBooth error:', e);
+        log('UpdateBooth error: ' + e.message);
+      }
+    }
+
+    async function deleteBooth(boothId, boothName) {
+      if (!confirm(`Are you sure you want to deactivate booth "${boothName}"?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/admin/booths/${boothId}`, {
+          method: 'DELETE',
+          headers: headers()
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to delete booth');
+        }
+
+        log(`✓ Booth "${boothName}" deactivated`);
+        loadBooths();
+      } catch (e) {
+        log('DeleteBooth error: ' + e.message);
+      }
+    }
+
+    async function regenerateKey(boothId, boothName) {
+      if (!confirm(`Regenerate API key for "${boothName}"? This will invalidate the old key.`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/admin/booths/${boothId}/regenerate-key`, {
+          method: 'POST',
+          headers: headers()
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to regenerate key');
+        }
+
+        log(`✓ New API key for "${boothName}": ${data.booth.api_key}`);
+        loadBooths();
+      } catch (e) {
+        log('RegenerateKey error: ' + e.message);
       }
     }
 

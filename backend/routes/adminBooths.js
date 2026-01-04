@@ -141,16 +141,19 @@ router.put('/booths/:id', async (req, res) => {
     }
 
     if (location_key) {
-      // Validate location exists
-      const locCheck = await db.query(
-        'SELECT location_key FROM locations WHERE location_key = $1 AND active = true',
-        [location_key]
-      );
-      if (locCheck.rowCount === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid or inactive location_key'
-        });
+      // Only validate if location_key is being changed
+      if (location_key !== booth.location_key) {
+        // Validate location exists
+        const locCheck = await db.query(
+          'SELECT location_key FROM locations WHERE location_key = $1 AND active = true',
+          [location_key]
+        );
+        if (locCheck.rowCount === 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid or inactive location_key'
+          });
+        }
       }
       updates.push(`location_key = $${paramCount++}`);
       values.push(location_key.trim());
