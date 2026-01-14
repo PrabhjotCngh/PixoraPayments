@@ -8,7 +8,7 @@ const crypto = require('crypto');
  * @param {Object} params - { amount, description, locationKey }
  * @returns {Object} - Cashfree order response with order_id, payment_session_id
  */
-async function createCashfreeOrder({ amount, description, locationKey }) {
+async function createCashfreeOrder({ amount, description, locationKey, boothCode }) {
     const orderId = `ORDER_${locationKey}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
     const cashfreePayload = {
@@ -17,14 +17,15 @@ async function createCashfreeOrder({ amount, description, locationKey }) {
         order_currency: 'INR',
         order_note: description || 'Pixora Photorooms Session',
         customer_details: {
-            customer_id: `BOOTH_${locationKey}_${Date.now()}`,
+            customer_id: `BOOTH_${boothCode}_${Date.now()}`,
             customer_phone: '9999999999'
         },
         order_meta: {
             return_url: `https://pixora.textberry.io/thankyou.html?order_id=${encodeURIComponent(orderId)}`
         },
         order_tags: {
-            location_code: locationKey
+            location_code: locationKey,
+            booth_code: boothCode  // ✅ UNIQUE BOOTH IDENTIFIER FOR CASHFREE
         }
     };
 
@@ -68,7 +69,7 @@ async function createCashfreeOrder({ amount, description, locationKey }) {
  * @param {Object} params - { booth_id, location_key, amount, description, idempotency_key }
  * @returns {Object} - Created or existing order
  */
-async function createOrder({ booth_id, location_key, amount, description, idempotency_key }) {
+async function createOrder({ booth_id, location_key, booth_code, amount, description, idempotency_key }) {
     return await db.transaction(async (client) => {
         // Check if order with this idempotency_key already exists
         const existingOrderQuery = `
@@ -93,7 +94,8 @@ async function createOrder({ booth_id, location_key, amount, description, idempo
         const cashfreeOrder = await createCashfreeOrder({
             amount,
             description,
-            locationKey: location_key
+            locationKey: location_key,
+            boothCode: booth_code
         });
 
         // Insert into database
@@ -146,10 +148,19 @@ async function getOrderByIdempotencyKey(idempotencyKey) {
 }
 
 /**
+ * Get order by Cashfree order_id
+ */
+async function getOrderByCashfreeOrderId(cashfreeOrderId) {
+    const query = 'SELECT * FROM orders WHERE order_id = $1';
+    const result = await db.query(query, [cashfreeOrderId]);
+    return result.rows[0] || null;
+}
+
+/**
  * Update order status (e.g., after payment callback)
  */
 async function updateOrderStatus(orderId, status) {
-    const query = 'UPDATE orders SET status = $1 WHERE id = $2 RETURNING *';
+    const query = 'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *';
     const result = await db.query(query, [status, orderId]);
     return result.rows[0] || null;
 }
@@ -209,6 +220,7 @@ module.exports = {
     createOrder,
     getOrderById,
     getOrderByIdempotencyKey,
+    getOrderByCashfreeOrderId,
     updateOrderStatus,
     listOrdersByBooth,
     getOrder

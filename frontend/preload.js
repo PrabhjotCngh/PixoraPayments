@@ -70,21 +70,42 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Payment APIs
   createOrder: async (amount, description) => {
-    const base = await ipcRenderer.invoke('get-backend-base');
-    const url = `${base}/api/create-order`;
+    // Get booth configuration
+    const boothConfig = await ipcRenderer.invoke('get-booth-config');
+    if (!boothConfig.apiKey || !boothConfig.serverUrl) {
+      throw new Error('Booth not configured. Please configure the booth first (Ctrl+Shift+C)');
+    }
+
+    // Generate idempotency key
+    const { randomUUID } = require('crypto');
+    const idempotencyKey = randomUUID();
+
+    const url = `${boothConfig.serverUrl}/api/create-order`;
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${boothConfig.apiKey}`,
+        'X-Idempotency-Key': idempotencyKey
+      },
       body: JSON.stringify({ amount, description })
     });
     return res.json();
   },
 
   getOrder: async (orderId) => {
-    const base = await ipcRenderer.invoke('get-backend-base');
+    // Get booth configuration for server URL
+    const boothConfig = await ipcRenderer.invoke('get-booth-config');
+    const base = boothConfig.serverUrl || await ipcRenderer.invoke('get-backend-base');
     const url = `${base}/api/get-order/${encodeURIComponent(orderId)}`;
     const res = await fetch(url);
     return res.json();
-  }
+  },
+
+  // Booth Configuration APIs
+  getBoothConfig: () => ipcRenderer.invoke('get-booth-config'),
+  saveBoothConfig: (config) => ipcRenderer.invoke('save-booth-config', config),
+  clearBoothConfig: () => ipcRenderer.invoke('clear-booth-config'),
+  openBoothConfig: () => ipcRenderer.invoke('open-booth-config')
 
 });
