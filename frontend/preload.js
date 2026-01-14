@@ -83,7 +83,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const url = `${boothConfig.serverUrl}/api/create-order`;
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${boothConfig.apiKey}`,
         'X-Idempotency-Key': idempotencyKey

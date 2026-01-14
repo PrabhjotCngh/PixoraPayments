@@ -14,7 +14,7 @@
 
   <!-- Configuration Button (top-right corner) -->
   <div style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
-    <button onclick="openBoothConfig()" 
+    <button onclick="openBoothConfig()"
       style="background: rgba(255, 255, 255, 0.9); border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px;"
       title="Booth Configuration (Ctrl+Shift+C)">
       ⚙️ <span>Config</span>
@@ -66,7 +66,7 @@
         const wrapperEl = document.getElementById('qr-code-wrapper');
         if (wrapperEl) wrapperEl.classList.remove('loading');
         console.error('QR generation failed', e);
-        
+
         // Check if it's a configuration error
         if (e.message && e.message.includes('not configured')) {
           alert('Booth Not Configured!\n\nPlease configure the booth before creating orders.\n\nClick the Config button (top-right) or press Ctrl+Shift+C');
