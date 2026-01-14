@@ -10,7 +10,7 @@ const db = require('../database/db');
  * @returns {Promise<Object>} Created booth details with booth_id, api_key, location_key
  * @throws {Error} If location_key is invalid or inactive
  */
-async function createBooth({ booth_name, location_key }) {
+async function createBooth({ booth_name, location_key, booth_code }) {
   // Validate required fields
   if (!booth_name || !location_key) {
     throw new Error('booth_name and location_key are required');
@@ -26,24 +26,47 @@ async function createBooth({ booth_name, location_key }) {
     throw new Error(`Invalid or inactive location_key: ${location_key}`);
   }
 
+  // Generate booth_code if not provided (format: LOCATION_BOOTH_XX)
+  let finalBoothCode = booth_code;
+  if (!finalBoothCode) {
+    // Auto-generate: count existing booths at this location
+    const countResult = await db.query(
+      'SELECT COUNT(*) FROM booths WHERE location_key = $1',
+      [location_key]
+    );
+    const boothNumber = parseInt(countResult.rows[0].count) + 1;
+    finalBoothCode = `${location_key}_BOOTH_${String(boothNumber).padStart(2, '0')}`;
+  }
+
+  // Validate booth_code is unique
+  const existingCode = await db.query(
+    'SELECT id FROM booths WHERE booth_code = $1',
+    [finalBoothCode]
+  );
+
+  if (existingCode.rowCount > 0) {
+    throw new Error(`Booth code '${finalBoothCode}' already exists`);
+  }
+
   // Generate booth ID and API key
   const boothId = uuidv4();
   const apiKey = 'bth_live_' + crypto.randomBytes(32).toString('hex');
 
   // Insert booth into database
   await db.query(
-    `INSERT INTO booths (id, booth_name, api_key, location_key, status)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [boothId, booth_name, apiKey, location_key, 'active']
+    `INSERT INTO booths (id, booth_name, api_key, location_key, booth_code, status)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [boothId, booth_name, apiKey, location_key, finalBoothCode, 'active']
   );
 
-  console.log(`Booth created: ${booth_name} (${boothId}) at location ${location_key}`);
+  console.log(`Booth created: ${booth_name} (${boothId}) with code ${finalBoothCode} at location ${location_key}`);
 
   return {
     booth_id: boothId,
     booth_name,
     api_key: apiKey,
     location_key,
+    booth_code: finalBoothCode,
     status: 'active'
   };
 }
@@ -55,7 +78,7 @@ async function createBooth({ booth_name, location_key }) {
  */
 async function getBoothById(boothId) {
   const result = await db.query(
-    'SELECT id, booth_name, api_key, location_key, status, last_seen_at, created_at FROM booths WHERE id = $1',
+    'SELECT id, booth_name, api_key, location_key, booth_code, status, last_seen_at, created_at FROM booths WHERE id = $1',
     [boothId]
   );
   return result.rows[0] || null;
@@ -68,7 +91,7 @@ async function getBoothById(boothId) {
  */
 async function getBoothByApiKey(apiKey) {
   const result = await db.query(
-    'SELECT id, booth_name, api_key, location_key, status, last_seen_at, created_at FROM booths WHERE api_key = $1',
+    'SELECT id, booth_name, api_key, location_key, booth_code, status, last_seen_at, created_at FROM booths WHERE api_key = $1',
     [apiKey]
   );
   return result.rows[0] || null;
@@ -93,7 +116,7 @@ async function updateBoothLastSeen(boothId) {
  */
 async function listBoothsByLocation(locationKey) {
   const result = await db.query(
-    'SELECT id, booth_name, api_key, location_key, status, last_seen_at, created_at FROM booths WHERE UPPER(location_key) = UPPER($1) ORDER BY created_at DESC',
+    'SELECT id, booth_name, api_key, location_key, booth_code, status, last_seen_at, created_at FROM booths WHERE UPPER(location_key) = UPPER($1) ORDER BY created_at DESC',
     [locationKey]
   );
   return result.rows;

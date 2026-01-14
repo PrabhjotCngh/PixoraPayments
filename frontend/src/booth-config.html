@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booth Configuration - Pixora Photorooms</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .config-container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .header h1 {
+      color: #333;
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+
+    .status-configured {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-unconfigured {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .form-section {
+      margin-bottom: 30px;
+    }
+
+    .form-section label {
+      display: block;
+      color: #333;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .form-section input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+      font-family: monospace;
+    }
+
+    .form-section input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .form-section input:disabled {
+      background: #f5f5f5;
+      color: #999;
+      cursor: not-allowed;
+    }
+
+    .form-section .hint {
+      font-size: 12px;
+      color: #999;
+      margin-top: 6px;
+    }
+
+    .booth-info {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .booth-info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .booth-info-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .booth-info-label {
+      color: #666;
+      font-weight: 500;
+    }
+
+    .booth-info-value {
+      color: #333;
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background: #218838;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #5a6268;
+    }
+
+    .message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .message-error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .message-info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .shortcut-hint {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e0e0e0;
+      font-size: 12px;
+      color: #999;
+    }
+
+    .shortcut-hint kbd {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      font-family: monospace;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="config-container">
+    <div class="header">
+      <h1>🎪 Booth Configuration</h1>
+      <p>Configure this booth machine to connect to the payment server</p>
+      <span id="statusBadge" class="status-badge status-unconfigured">Not Configured</span>
+    </div>
+
+    <div id="messageBox" class="message"></div>
+
+    <!-- Current Booth Info (shown when configured) -->
+    <div id="boothInfo" class="booth-info" style="display: none;">
+      <div class="booth-info-row">
+        <span class="booth-info-label">Booth Name:</span>
+        <span class="booth-info-value" id="infoBoothName">-</span>
+      </div>
+      <div class="booth-info-row">
+        <span class="booth-info-label">Location:</span>
+        <span class="booth-info-value" id="infoLocationKey">-</span>
+      </div>
+      <div class="booth-info-row">
+        <span class="booth-info-label">Booth Code:</span>
+        <span class="booth-info-value" id="infoBoothCode">-</span>
+      </div>
+      <div class="booth-info-row">
+        <span class="booth-info-label">Status:</span>
+        <span class="booth-info-value" id="infoStatus">-</span>
+      </div>
+    </div>
+
+    <!-- Configuration Form -->
+    <div class="form-section">
+      <label for="serverUrl">Server URL</label>
+      <input 
+        type="text" 
+        id="serverUrl" 
+        placeholder="http://127.0.0.1:3000"
+        value="http://127.0.0.1:3000"
+      >
+      <div class="hint">The backend server URL (e.g., http://127.0.0.1:3000 or https://api.yourserver.com)</div>
+    </div>
+
+    <div class="form-section">
+      <label for="apiKey">Booth API Key</label>
+      <input 
+        type="password" 
+        id="apiKey" 
+        placeholder="bth_live_..."
+        autocomplete="off"
+      >
+      <div class="hint">64-character API key starting with "bth_live_" (get from admin panel)</div>
+    </div>
+
+    <div class="button-group">
+      <button class="btn btn-primary" id="testBtn">
+        <span id="testBtnText">🔍 Test Connection</span>
+      </button>
+      <button class="btn btn-success" id="saveBtn" disabled>
+        <span id="saveBtnText">💾 Save Configuration</span>
+      </button>
+    </div>
+
+    <div class="button-group">
+      <button class="btn btn-secondary" id="clearBtn">
+        🗑️ Clear Configuration
+      </button>
+    </div>
+
+    <div class="shortcut-hint">
+      💡 Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> to open this config screen anytime
+    </div>
+  </div>
+
+  <script>
+    const serverUrlInput = document.getElementById('serverUrl');
+    const apiKeyInput = document.getElementById('apiKey');
+    const testBtn = document.getElementById('testBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const messageBox = document.getElementById('messageBox');
+    const statusBadge = document.getElementById('statusBadge');
+    const boothInfo = document.getElementById('boothInfo');
+
+    let currentBoothData = null;
+
+    // Load saved configuration on startup
+    loadConfiguration();
+
+    async function loadConfiguration() {
+      try {
+        const config = await window.electronAPI.getBoothConfig();
+        if (config.apiKey && config.serverUrl) {
+          serverUrlInput.value = config.serverUrl;
+          apiKeyInput.value = config.apiKey;
+          showMessage('Configuration loaded. Click "Test Connection" to verify.', 'info');
+          
+          // Auto-test on load
+          setTimeout(() => testConnection(), 500);
+        }
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    }
+
+    testBtn.addEventListener('click', testConnection);
+    saveBtn.addEventListener('click', saveConfiguration);
+    clearBtn.addEventListener('click', clearConfiguration);
+
+    async function testConnection() {
+      const serverUrl = serverUrlInput.value.trim();
+      const apiKey = apiKeyInput.value.trim();
+
+      if (!serverUrl || !apiKey) {
+        showMessage('Please enter both Server URL and API Key', 'error');
+        return;
+      }
+
+      if (!apiKey.startsWith('bth_live_')) {
+        showMessage('Invalid API key format. Must start with "bth_live_"', 'error');
+        return;
+      }
+
+      setLoading(testBtn, true, 'Testing...');
+      saveBtn.disabled = true;
+
+      try {
+        const response = await fetch(`${serverUrl}/api/test-booth-auth`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          currentBoothData = data.booth;
+          showMessage(`✅ Connection successful! Authenticated as "${data.booth.booth_name}"`, 'success');
+          updateBoothInfo(data.booth);
+          saveBtn.disabled = false;
+          statusBadge.textContent = 'Connected';
+          statusBadge.className = 'status-badge status-configured';
+        } else {
+          throw new Error(data.error || 'Authentication failed');
+        }
+      } catch (error) {
+        console.error('Test connection error:', error);
+        showMessage(`❌ Connection failed: ${error.message}`, 'error');
+        saveBtn.disabled = true;
+        currentBoothData = null;
+        boothInfo.style.display = 'none';
+        statusBadge.textContent = 'Not Connected';
+        statusBadge.className = 'status-badge status-unconfigured';
+      } finally {
+        setLoading(testBtn, false, '🔍 Test Connection');
+      }
+    }
+
+    async function saveConfiguration() {
+      const serverUrl = serverUrlInput.value.trim();
+      const apiKey = apiKeyInput.value.trim();
+
+      if (!currentBoothData) {
+        showMessage('Please test the connection first before saving', 'error');
+        return;
+      }
+
+      setLoading(saveBtn, true, 'Saving...');
+
+      try {
+        await window.electronAPI.saveBoothConfig({
+          serverUrl,
+          apiKey,
+          boothName: currentBoothData.booth_name,
+          locationKey: currentBoothData.location_key,
+          boothCode: currentBoothData.booth_code
+        });
+
+        showMessage('✅ Configuration saved successfully! Restart the app to apply changes.', 'success');
+        statusBadge.textContent = 'Configured';
+        statusBadge.className = 'status-badge status-configured';
+      } catch (error) {
+        console.error('Save config error:', error);
+        showMessage(`❌ Failed to save: ${error.message}`, 'error');
+      } finally {
+        setLoading(saveBtn, false, '💾 Save Configuration');
+      }
+    }
+
+    async function clearConfiguration() {
+      if (!confirm('Are you sure you want to clear the booth configuration?')) {
+        return;
+      }
+
+      try {
+        await window.electronAPI.clearBoothConfig();
+        serverUrlInput.value = 'http://127.0.0.1:3000';
+        apiKeyInput.value = '';
+        currentBoothData = null;
+        boothInfo.style.display = 'none';
+        saveBtn.disabled = true;
+        statusBadge.textContent = 'Not Configured';
+        statusBadge.className = 'status-badge status-unconfigured';
+        showMessage('Configuration cleared successfully', 'success');
+      } catch (error) {
+        console.error('Clear config error:', error);
+        showMessage(`Failed to clear: ${error.message}`, 'error');
+      }
+    }
+
+    function updateBoothInfo(booth) {
+      document.getElementById('infoBoothName').textContent = booth.booth_name;
+      document.getElementById('infoLocationKey').textContent = booth.location_key;
+      document.getElementById('infoBoothCode').textContent = booth.booth_code || 'N/A';
+      document.getElementById('infoStatus').textContent = booth.status.toUpperCase();
+      boothInfo.style.display = 'block';
+    }
+
+    function showMessage(text, type) {
+      messageBox.textContent = text;
+      messageBox.className = `message message-${type} show`;
+      setTimeout(() => {
+        messageBox.classList.remove('show');
+      }, 5000);
+    }
+
+    function setLoading(button, loading, text) {
+      if (loading) {
+        button.disabled = true;
+        button.innerHTML = `<span class="spinner"></span> ${text}`;
+      } else {
+        button.disabled = false;
+        button.innerHTML = text;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -56,15 +56,16 @@ router.post('/create-order', authenticateBooth, async (req, res) => {
       });
     }
 
-    // Security: location_key comes from authenticated booth only
-    const { id: booth_id, location_key } = req.booth;
+    // Security: location_key and booth_code come from authenticated booth only
+    const { id: booth_id, location_key, booth_code } = req.booth;
 
     // Create order with idempotency
     const result = await orderService.createOrder({
       booth_id,
       location_key,
+      booth_code,  // ✅ Unique booth identifier
       amount,
-      description: description || `Payment at ${location_key}`,
+      description: description || `Payment at ${booth_code}`,
       idempotency_key: idempotencyKey
     });
 

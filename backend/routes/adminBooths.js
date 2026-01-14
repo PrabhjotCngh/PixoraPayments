@@ -17,7 +17,7 @@ router.get('/booths', async (req, res) => {
       // List all booths
       const db = require('../database/db');
       const query = await db.query(
-        'SELECT id, booth_name, api_key, location_key, status, last_seen_at, created_at FROM booths ORDER BY created_at DESC'
+        'SELECT id, booth_name, api_key, location_key, booth_code, status, last_seen_at, created_at FROM booths ORDER BY created_at DESC'
       );
       result = query.rows;
     }
@@ -51,23 +51,13 @@ router.post('/booths', async (req, res) => {
       });
     }
 
-    // Check if booth with this location_key already exists
-    const db = require('../database/db');
-    const existingBooth = await db.query(
-      'SELECT id FROM booths WHERE location_key = $1',
-      [location_key.trim()]
-    );
-
-    if (existingBooth.rowCount > 0) {
-      return res.status(409).json({
-        success: false,
-        error: 'Location key already exists'
-      });
-    }
+    // Optional: booth_code can be provided or auto-generated
+    const { booth_code } = req.body;
 
     const booth = await boothService.createBooth({
       booth_name: booth_name.trim(),
-      location_key: location_key.trim()
+      location_key: location_key.trim(),
+      booth_code: booth_code ? booth_code.trim() : null
     });
 
     res.status(201).json({

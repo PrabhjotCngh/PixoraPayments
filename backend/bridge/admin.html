@@ -134,6 +134,7 @@
           <tr style="background:#f5f5f7;text-align:left;">
             <th style="padding:8px;border:1px solid #ddd;">Booth Name</th>
             <th style="padding:8px;border:1px solid #ddd;">Location Key</th>
+            <th style="padding:8px;border:1px solid #ddd;">Booth Code</th>
             <th style="padding:8px;border:1px solid #ddd;">API Key</th>
             <th style="padding:8px;border:1px solid #ddd;">Status</th>
             <th style="padding:8px;border:1px solid #ddd;">Last Seen</th>
@@ -350,14 +351,14 @@
       } catch (e) {
         log('LoadBooths error: ' + e.message);
         document.getElementById('boothsTableBody').innerHTML =
-          '<tr><td colspan="7" style="padding:16px;text-align:center;color:#f66;">Error loading booths: ' + e.message + '</td></tr>';
+          '<tr><td colspan="8" style="padding:16px;text-align:center;color:#f66;">Error loading booths: ' + e.message + '</td></tr>';
       }
     }
 
     function displayBooths(booths) {
       const tbody = document.getElementById('boothsTableBody');
       if (!booths || booths.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="padding:16px;text-align:center;color:#999;">No booths found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:16px;text-align:center;color:#999;">No booths found</td></tr>';
         return;
       }
 
@@ -372,6 +373,7 @@
           <tr>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(booth.booth_name)}</td>
             <td style="padding:8px;border:1px solid #ddd;"><code>${escapeHtml(booth.location_key)}</code></td>
+            <td style="padding:8px;border:1px solid #ddd;"><code style="color:#007aff;font-weight:600;">${escapeHtml(booth.booth_code || 'N/A')}</code></td>
             <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:11px;" title="${escapeHtml(booth.api_key)}">${apiKeyDisplay}</td>
             <td style="padding:8px;border:1px solid #ddd;">
               <span style="display:inline-block;padding:2px 6px;background:${statusColor};color:white;border-radius:3px;font-size:11px;">${booth.status.toUpperCase()}</span>

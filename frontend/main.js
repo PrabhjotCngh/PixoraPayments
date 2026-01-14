@@ -46,11 +46,25 @@ function createWindow() {
   });
 
   // Load index/welcome screen first
-  mainWindow.loadFile('./src/payment.html');
+  mainWindow.loadFile(path.join(__dirname, 'src', 'payment.html'));
 
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(false);
   //mainWindow.webContents.openDevTools();
+
+  // Register keyboard shortcuts
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    // Ctrl+Shift+C: Open booth configuration
+    if (input.control && input.shift && input.key.toLowerCase() === 'c') {
+      event.preventDefault();
+      mainWindow.loadFile(path.join(__dirname, 'src', 'booth-config.html'));
+    }
+    // Ctrl+Shift+H: Go back to home/payment screen
+    if (input.control && input.shift && input.key.toLowerCase() === 'h') {
+      event.preventDefault();
+      mainWindow.loadFile(path.join(__dirname, 'src', 'payment.html'));
+    }
+  });
 
   // Respect configured window behavior and show the window
   mainWindow.once('ready-to-show', () => {
@@ -190,6 +204,56 @@ ipcMain.handle('bring-to-front', async () => {
   } catch (e) {
     return { success: false, error: e.message };
   }
+});
+
+// Booth Configuration Handlers
+ipcMain.handle('get-booth-config', async () => {
+  try {
+    const dir = app.getPath('userData');
+    const file = path.join(dir, 'booth-config.json');
+    if (fs.existsSync(file)) {
+      const data = fs.readFileSync(file, 'utf8');
+      return JSON.parse(data);
+    }
+    return {};
+  } catch (error) {
+    console.error('Failed to read booth config:', error);
+    return {};
+  }
+});
+
+ipcMain.handle('save-booth-config', async (_event, config) => {
+  try {
+    const dir = app.getPath('userData');
+    const file = path.join(dir, 'booth-config.json');
+    fs.writeFileSync(file, JSON.stringify(config, null, 2), 'utf8');
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save booth config:', error);
+    throw new Error('Failed to save configuration');
+  }
+});
+
+ipcMain.handle('clear-booth-config', async () => {
+  try {
+    const dir = app.getPath('userData');
+    const file = path.join(dir, 'booth-config.json');
+    if (fs.existsSync(file)) {
+      fs.unlinkSync(file);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to clear booth config:', error);
+    throw new Error('Failed to clear configuration');
+  }
+});
+
+ipcMain.handle('open-booth-config', async () => {
+  if (mainWindow) {
+    mainWindow.loadFile(path.join(__dirname, 'src', 'booth-config.html'));
+    return { success: true };
+  }
+  return { success: false };
 });
 
 // App lifecycle

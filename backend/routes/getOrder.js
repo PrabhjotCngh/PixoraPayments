@@ -27,6 +27,13 @@ router.get('/get-order/:orderId', async (req, res) => {
 
         if (orderStatus.paid) {
             console.log('Payment successful for order:', orderId);
+
+            // Update order status in database
+            const dbOrder = await orderService.getOrderByCashfreeOrderId(orderId);
+            if (dbOrder && dbOrder.status !== 'paid') {
+                await orderService.updateOrderStatus(dbOrder.id, 'paid');
+                console.log(`Order ${orderId} status updated to 'paid' in database`);
+            }
         }
 
         return res.json(orderStatus);
