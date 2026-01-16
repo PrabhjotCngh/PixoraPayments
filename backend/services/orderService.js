@@ -102,12 +102,17 @@ async function createOrder({ booth_id, location_key, booth_code, amount, descrip
         const insertQuery = `
       INSERT INTO orders (
         id, booth_id, order_id, location_key, amount,
-        cashfree_order_id, status, idempotency_key, order_code, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        cashfree_order_id, status, idempotency_key, order_code, order_tags, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
       RETURNING *
     `;
 
         const orderId = uuidv4();
+        const orderTags = {
+            booth_code: booth_code,
+            location_key: location_key
+        };
+
         const insertResult = await client.query(insertQuery, [
             orderId,
             booth_id,
@@ -117,7 +122,8 @@ async function createOrder({ booth_id, location_key, booth_code, amount, descrip
             cashfreeOrder.cashfree_order_id,
             'pending',
             idempotency_key,
-            cashfreeOrder.order_code || null
+            cashfreeOrder.order_code || null,
+            JSON.stringify(orderTags)
         ]);
 
         return {
