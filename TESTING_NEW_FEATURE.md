@@ -343,7 +343,35 @@ CREATE INDEX
 
 The "UPDATE 0" is normal if you don't have any booths yet.
 
-### 9.4: Verify All Tables Exist
+### 9.4: Run Migration 004 (Add Order Code)
+
+```bash
+psql -h localhost -U pixora_admin -d pixora_payments -f database/migrations/004_add_order_code.sql
+```
+
+**What this does:** Adds the order_code column to track Cashfree order codes for each order.
+
+You should see:
+```
+ALTER TABLE
+CREATE INDEX
+```
+
+### 9.5: Run Migration 005 (Add Order Tags)
+
+```bash
+psql -h localhost -U pixora_admin -d pixora_payments -f database/migrations/005_add_order_tags.sql
+```
+
+**What this does:** Adds the order_tags column (JSONB) to store booth_code and other order metadata.
+
+You should see:
+```
+ALTER TABLE
+CREATE INDEX
+```
+
+### 9.6: Verify All Tables Exist
 
 ```bash
 psql -h localhost -U pixora_admin -d pixora_payments -c "\dt"
@@ -356,7 +384,7 @@ You should see:
 - booths
 - orders
 
-### 9.5: Check Booth Table Structure
+### 9.7: Check Booth Table Structure
 
 ```bash
 psql -h localhost -U pixora_admin -d pixora_payments -c "\d booths"
@@ -504,9 +532,9 @@ LIMIT 5;
 "
 ```
 
-**What this does:** Shows your latest 5 orders with their booth codes.
+**What this does:** Shows your latest 5 orders with their booth codes and order tags.
 
-**Expected result:** Table showing orders tagged with specific booth codes (like CP_BOOTH_01, HKV_BOOTH_02, etc.)
+**Expected result:** Table showing orders tagged with specific booth codes (like CP_BOOTH_01, HKV_BOOTH_02, etc.) with order_tags containing booth code metadata.
 
 ---
 
