@@ -4,7 +4,7 @@ const axios = require('axios');
 
 const BASE_URL = 'http://127.0.0.1:3000';
 const ADMIN_USER = 'admin';
-const ADMIN_PASS = process.env.ADMIN_BASIC_PASS || 'pixoraEC2AdminPassword';
+const ADMIN_PASS = process.env.ADMIN_BASIC_PASS || 'your_admin_password';
 
 async function testBoothAuth() {
     console.log('=== Testing Booth Authentication Middleware ===\n');

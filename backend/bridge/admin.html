@@ -60,7 +60,7 @@
     <label>Admin User:</label>
     <input id="adminUser" type="text" placeholder="admin" value="admin" />
     <label>Admin Password:</label>
-    <input id="adminPass" type="password" placeholder="password" value="pixoraEC2AdminPassword" />
+    <input id="adminPass" type="password" placeholder="password" value="your_admin_password" />
     <button onclick="refreshHealth()">Refresh Health</button>
     <button onclick="logout()" style="background:#fee;border:1px solid #f99">Logout</button>
   </div>
@@ -103,6 +103,51 @@
     <button type="button" onclick="saveLocationCode()">Save Location Code</button>
   </form>
 
+  <!-- Location Management Section -->
+  <div class="section" style="margin-top:24px;border-top:2px solid #ddd;padding-top:16px;">
+    <h2 style="font-size:18px;margin-bottom:12px;">Location Management</h2>
+
+    <!-- Create New Location Form -->
+    <form onsubmit="event.preventDefault();createLocation();"
+      style="background:#f9f9fb;padding:12px;border-radius:6px;margin-bottom:16px;">
+      <h3 style="font-size:14px;margin:0 0 8px 0;">Create New Location</h3>
+      <div class="row">
+        <label>Location Key:</label>
+        <input id="newLocationKey" type="text" placeholder="e.g., CP, HKV" required style="width:120px;" />
+        <label>Location Name:</label>
+        <input id="newLocationName" type="text" placeholder="e.g., Connaught Place" required style="width:200px;" />
+        <label>City:</label>
+        <input id="newLocationCity" type="text" placeholder="e.g., New Delhi" required style="width:150px;" />
+        <button type="submit" style="background:#34c759;color:white;border:none;">Create Location</button>
+      </div>
+    </form>
+
+    <!-- Locations Table -->
+    <div style="overflow-x:auto;">
+      <table id="locationsTable" style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f5f5f7;text-align:left;">
+            <th style="padding:8px;border:1px solid #ddd;">Location Key</th>
+            <th style="padding:8px;border:1px solid #ddd;">Location Name</th>
+            <th style="padding:8px;border:1px solid #ddd;">City</th>
+            <th style="padding:8px;border:1px solid #ddd;">Status</th>
+            <th style="padding:8px;border:1px solid #ddd;">Created</th>
+            <th style="padding:8px;border:1px solid #ddd;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="locationsTableBody">
+          <tr>
+            <td colspan="6" style="padding:16px;text-align:center;color:#999;">Click "Load Locations" to fetch data</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <button onclick="loadLocations()" style="background:#34c759;color:white;border:none;">Load Locations</button>
+    </div>
+  </div>
+
   <!-- Booth Management Section -->
   <div class="section" style="margin-top:24px;border-top:2px solid #ddd;padding-top:16px;">
     <h2 style="font-size:18px;margin-bottom:12px;">Booth Management</h2>
@@ -115,7 +160,7 @@
         <label>Booth Name:</label>
         <input id="newBoothName" type="text" placeholder="e.g., HKV Main Booth" required style="width:200px;" />
         <label>Location Key:</label>
-        <input id="newLocationKey" type="text" placeholder="e.g., HKV001" required style="width:150px;" />
+        <input id="newBoothLocationKey" type="text" placeholder="e.g., HKV" required style="width:150px;" />
         <button type="submit" style="background:#007aff;color:white;border:none;">Create Booth</button>
       </div>
     </form>
@@ -144,7 +189,7 @@
         </thead>
         <tbody id="boothsTableBody">
           <tr>
-            <td colspan="7" style="padding:16px;text-align:center;color:#999;">Click "Load Booths" to fetch data</td>
+            <td colspan="8" style="padding:16px;text-align:center;color:#999;">Click "Load Booths" to fetch data</td>
           </tr>
         </tbody>
       </table>
@@ -329,6 +374,149 @@
       }
     }
 
+    // ============ LOCATION MANAGEMENT FUNCTIONS ============
+
+    async function loadLocations() {
+      try {
+        const res = await fetch('/admin/locations', { 
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to load locations');
+        }
+
+        displayLocations(data.locations);
+        log(`Loaded ${data.count} location(s)`);
+      } catch (e) {
+        log('LoadLocations error: ' + e.message);
+        document.getElementById('locationsTableBody').innerHTML =
+          '<tr><td colspan="6" style="padding:16px;text-align:center;color:#f66;">Error loading locations: ' + e.message + '</td></tr>';
+      }
+    }
+
+    function displayLocations(locations) {
+      const tbody = document.getElementById('locationsTableBody');
+      if (!locations || locations.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:16px;text-align:center;color:#999;">No locations found</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = locations.map(location => {
+        const statusColor = location.active ? '#34c759' : '#999';
+        const created = new Date(location.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+        return `
+          <tr>
+            <td style="padding:8px;border:1px solid #ddd;"><code style="color:#007aff;font-weight:600;">${escapeHtml(location.location_key)}</code></td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(location.location_name)}</td>
+            <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(location.city)}</td>
+            <td style="padding:8px;border:1px solid #ddd;">
+              <span style="display:inline-block;padding:2px 6px;background:${statusColor};color:white;border-radius:3px;font-size:11px;">${location.active ? 'ACTIVE' : 'INACTIVE'}</span>
+            </td>
+            <td style="padding:8px;border:1px solid #ddd;font-size:11px;">${created}</td>
+            <td style="padding:8px;border:1px solid #ddd;">
+              <button onclick='editLocation(${JSON.stringify(location)})' style="font-size:11px;padding:4px 8px;margin:2px;">Edit</button>
+              <button onclick='deleteLocation("${location.location_key}", "${escapeHtml(location.location_name)}")' style="font-size:11px;padding:4px 8px;background:#ff3b30;color:white;border:none;margin:2px;">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function createLocation() {
+      const locationKey = document.getElementById('newLocationKey').value.trim().toUpperCase();
+      const locationName = document.getElementById('newLocationName').value.trim();
+      const city = document.getElementById('newLocationCity').value.trim();
+
+      if (!locationKey || !locationName || !city) {
+        log('Location key, name, and city are required');
+        return;
+      }
+
+      try {
+        const res = await fetch('/admin/locations', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ location_key: locationKey, location_name: locationName, city })
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to create location');
+        }
+
+        log(`✓ Created location: ${locationName} (${locationKey})`);
+        document.getElementById('newLocationKey').value = '';
+        document.getElementById('newLocationName').value = '';
+        document.getElementById('newLocationCity').value = '';
+        loadLocations();
+      } catch (e) {
+        log('CreateLocation error: ' + e.message);
+      }
+    }
+
+    function editLocation(location) {
+      const newName = prompt(`Edit location name for "${location.location_key}":`, location.location_name);
+      if (newName === null) return;
+
+      const newCity = prompt(`Edit city for "${location.location_key}":`, location.city);
+      if (newCity === null) return;
+
+      updateLocation(location.location_key, { location_name: newName, city: newCity });
+    }
+
+    async function updateLocation(locationKey, updateData) {
+      try {
+        const res = await fetch(`/admin/locations/${locationKey}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData)
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to update location');
+        }
+
+        log('✓ Location updated successfully');
+        loadLocations();
+      } catch (e) {
+        log('UpdateLocation error: ' + e.message);
+      }
+    }
+
+    async function deleteLocation(locationKey, locationName) {
+      if (!confirm(`Are you sure you want to deactivate location "${locationName}"? (${locationKey})`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/admin/locations/${locationKey}`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to delete location');
+        }
+
+        log(`✓ Location "${locationName}" deactivated`);
+        loadLocations();
+      } catch (e) {
+        log('DeleteLocation error: ' + e.message);
+      }
+    }
+
     // ============ BOOTH MANAGEMENT FUNCTIONS ============
 
     async function loadBooths() {
@@ -336,7 +524,10 @@
         const locationKey = document.getElementById('filterLocationKey').value.trim();
         const url = locationKey ? `/admin/booths?location_key=${encodeURIComponent(locationKey)}` : '/admin/booths';
 
-        const res = await fetch(url, { headers: headers() });
+        const res = await fetch(url, { 
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         }
@@ -398,7 +589,7 @@
 
     async function createBooth() {
       const boothName = document.getElementById('newBoothName').value.trim();
-      const locationKey = document.getElementById('newLocationKey').value.trim();
+      const locationKey = document.getElementById('newBoothLocationKey').value.trim();
 
       if (!boothName || !locationKey) {
         log('Booth name and location key are required');
@@ -408,7 +599,8 @@
       try {
         const res = await fetch('/admin/booths', {
           method: 'POST',
-          headers: headers(),
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ booth_name: boothName, location_key: locationKey })
         });
 
@@ -461,7 +653,8 @@
 
         const res = await fetch(`/admin/booths/${boothId}`, {
           method: 'PUT',
-          headers: headers(),
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
 
@@ -490,7 +683,8 @@
       try {
         const res = await fetch(`/admin/booths/${boothId}`, {
           method: 'DELETE',
-          headers: headers()
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
         });
 
         const data = await res.json();
@@ -513,7 +707,8 @@
       try {
         const res = await fetch(`/admin/booths/${boothId}/regenerate-key`, {
           method: 'POST',
-          headers: headers()
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
         });
 
         const data = await res.json();
