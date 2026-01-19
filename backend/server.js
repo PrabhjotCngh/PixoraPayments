@@ -1,11 +1,23 @@
 const express = require('express');
 const axios = require('axios');
-require('dotenv').config();
-const appConfig = require('../frontend/config.json');
-const { pixoraDir } = require('./pixoraPaths');
-
 const path = require('path');
 const fs = require('fs');
+// Load env from backend/.env or fallback to project root ../.env
+try {
+  const dotenv = require('dotenv');
+  const backendEnv = path.join(__dirname, '.env');
+  const rootEnv = path.join(__dirname, '../.env');
+  if (fs.existsSync(backendEnv)) {
+    dotenv.config({ path: backendEnv });
+  } else if (fs.existsSync(rootEnv)) {
+    dotenv.config({ path: rootEnv });
+    console.log('[dotenv] loaded root .env for backend');
+  } else {
+    dotenv.config();
+  }
+} catch (_) { }
+const appConfig = require('../frontend/config.json');
+const { pixoraDir } = require('./pixoraPaths');
 const app = express();
 app.use(express.json());
 // Disable automatic ETag generation to avoid 304 responses on dynamic endpoints
@@ -145,6 +157,10 @@ app.use('/api', getOrderRouter);
 
 // Apply to all /admin routes
 app.use('/admin', adminAuth);
+
+// Mount admin location routes
+const adminLocationsRouter = require('./routes/adminLocations');
+app.use('/admin', adminLocationsRouter);
 
 // Mount admin booth routes
 const adminBoothsRouter = require('./routes/adminBooths');
