@@ -474,7 +474,7 @@ If you see `"status":"running"` with Cashfree credentials present, your server i
 ```bash
 curl -X POST http://localhost:3000/admin/booths \
   -H "Content-Type: application/json" \
-  -u admin:pixoraEC2AdminPassword \
+  -u admin:your_admin_password \
   -d '{
     "booth_name": "CP Booth 1",
     "location_key": "CP",
@@ -489,7 +489,7 @@ curl -X POST http://localhost:3000/admin/booths \
 ### Test B: List All Booths (See Booth Codes)
 
 ```bash
-curl http://localhost:3000/admin/booths -u admin:pixoraEC2AdminPassword | python3 -m json.tool
+curl http://localhost:3000/admin/booths -u admin:your_admin_password | python3 -m json.tool
 ```
 
 **What this does:** Gets all booths and formats the output nicely.
@@ -544,7 +544,7 @@ If you want to test the booth configuration feature with your Electron app:
 
 1. **Open the Electron app** on a booth computer
 2. **Press Ctrl+Shift+C** (this opens booth configuration)
-3. **Enter your EC2 server URL**: `http://your-ec2-ip:3000`
+3. **Enter your server URL**: `https://pixora.textberry.io`
 4. **Enter a booth API key** (from Test B above)
 5. **Click "Test Connection"**
 6. **If successful, click "Save"**

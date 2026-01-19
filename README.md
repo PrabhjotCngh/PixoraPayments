@@ -1,6 +1,6 @@
 # PixoraPayments
 
-Electron app that collects payment (via Cashfree QR) or uses a static QR, then hands control back to DSLRBooth. Includes a small Windows bridge to coordinate focus/quit behavior.
+Electron app that collects payment (via Cashfree), then hands control back to DSLRBooth. Includes a small Windows bridge to coordinate focus/quit behavior.
 
 ## Quick Start
 
@@ -132,6 +132,14 @@ USE_LOCAL_BACKEND=false
 
 ### Admin APIs (Basic Auth Required)
 
+**Location Management:**
+- `GET /admin/locations`: List all active locations
+- `POST /admin/locations`: Create new location
+- `GET /admin/locations/:key`: Get location details by location_key
+- `PUT /admin/locations/:key`: Update location (name, city, status)
+- `DELETE /admin/locations/:key`: Deactivate location (soft delete)
+
+**Booth Management:**
 - `GET /admin/booths`: List all booths or filter by location
 - `POST /admin/booths`: Create new booth (generates API key automatically)
 - `PUT /admin/booths/:id`: Update booth details or status
@@ -277,3 +285,42 @@ USE_LOCAL_BACKEND=false
 
 - Electron DevTools are disabled by default to reduce noise and avoid Autofill warnings.
 - Cashfree REST base URLs are configured in `config.json` (`cashfree.apiBase.production` / `cashfree.apiBase.sandbox`). The backend selects the correct one based on `CASHFREE_ENV`.
+
+## Documentation
+
+- Location API Quick Start: [docs/LOCATION_API_QUICK_START.md](docs/LOCATION_API_QUICK_START.md)
+- Location Implementation Summary: [docs/LOCATION_MANAGEMENT_IMPLEMENTATION.md](docs/LOCATION_MANAGEMENT_IMPLEMENTATION.md)
+- Admin Portal Setup: [docs/ADMIN_PORTAL_SETUP.md](docs/ADMIN_PORTAL_SETUP.md)
+- Booth Setup Guide: [docs/BOOTH_SETUP_GUIDE.md](docs/BOOTH_SETUP_GUIDE.md)
+- Testing Feature on EC2: [docs/TESTING_NEW_FEATURE.md](docs/TESTING_NEW_FEATURE.md)
+- Cleanup Summary: [docs/CLEANUP_SUMMARY.md](docs/CLEANUP_SUMMARY.md)
+
+### Project Structure
+
+- **Root**:
+  - [package.json](package.json): project metadata and scripts
+  - [.env](.env): optional environment file (local dev); backend prefers [backend/.env](backend/.env)
+  - [README.md](README.md): overview and docs index
+  - [docs/](docs): consolidated documentation
+
+- **Backend** ([backend/](backend)):
+  - [server.js](backend/server.js): Express app entrypoint
+  - [routes/](backend/routes): API endpoints (admin booths/locations, orders)
+  - [services/](backend/services): business logic (e.g., locationService)
+  - [middleware/](backend/middleware): auth and request handlers
+  - [database/](backend/database): migrations and DB helpers
+  - [bridge/](backend/bridge): admin portal HTML/JS
+  - [test-*.js](backend): local curl-style test scripts
+
+- **Frontend (Electron)** ([frontend/](frontend)):
+  - [config.json](frontend/config.json): app configuration (URLs, assets, window behavior)
+  - [main.js](frontend/main.js): Electron main process
+  - [preload.js](frontend/preload.js): safe APIs exposed to renderer
+  - [assets/](frontend/assets): images, videos, static files
+  - [src/](frontend/src): HTML/CSS/JS UI
+    - Pages: [index.html](frontend/src/index.html), [payment.html](frontend/src/payment.html), [success.html](frontend/src/success.html), [failure.html](frontend/src/failure.html), [select.html](frontend/src/select.html)
+    - Admin: [booth-config.html](frontend/src/booth-config.html)
+    - Scripts: [js/renderer.js](frontend/src/js/renderer.js)
+
+- **Docs** ([docs/](docs)):
+  - Admin, API, setup, and testing guides consolidated here
