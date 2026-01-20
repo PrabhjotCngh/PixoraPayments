@@ -56,13 +56,40 @@
 
 <body>
   <h1>Pixora Admin</h1>
-  <div class="row">
+
+  <!-- Login Form (shown if not authenticated) -->
+  <div id="loginPanel" style="background:#f0f0f0;padding:20px;border-radius:8px;max-width:400px;margin:20px 0;display:none;">
+    <h2 style="margin-top:0;">Login Required</h2>
+    <p>Please enter your admin credentials to continue.</p>
+    <div class="row">
+      <label>Admin User:</label>
+      <input id="loginUser" type="text" placeholder="admin" value="admin" style="width:200px;" />
+    </div>
+    <div class="row">
+      <label>Admin Password:</label>
+      <input id="loginPass" type="password" placeholder="password" style="width:200px;" />
+    </div>
+    <div class="row">
+      <button onclick="handleLogin()" style="background:#34c759;color:white;border:none;padding:8px 16px;">Login</button>
+    </div>
+    <div id="loginError" style="color:#f66;margin-top:10px;display:none;"></div>
+  </div>
+
+  <!-- Main Controls (shown if authenticated) -->
+  <div id="mainPanel" style="display:none;">
+    <div class="row">
+      <label>Logged in as:</label>
+      <span id="currentUser" style="font-weight:bold;margin-right:20px;"></span>
+      <button onclick="refreshHealth()">Refresh Health</button>
+      <button onclick="logout()" style="background:#fee;border:1px solid #f99">Logout</button>
+    </div>
+
+  <!-- Form Sections -->
+  <div style="display:none;">
     <label>Admin User:</label>
     <input id="adminUser" type="text" placeholder="admin" value="admin" />
     <label>Admin Password:</label>
     <input id="adminPass" type="password" placeholder="password" value="your_admin_password" />
-    <button onclick="refreshHealth()">Refresh Health</button>
-    <button onclick="logout()" style="background:#fee;border:1px solid #f99">Logout</button>
   </div>
 
 
@@ -226,6 +253,7 @@
       style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;"
       onclick="closeEditModal()"></div>
   </div>
+  </div>
 
   <div class="devices" id="devices"></div>
   <div class="devices" id="blocked"></div>
@@ -265,17 +293,11 @@
     }
 
     function logout() {
-      // Send request with invalid credentials to clear cached auth
-      fetch('/admin/logout', {
-        method: 'GET',
-        headers: { 'Authorization': 'Basic ' + btoa('logout:logout') }
-      }).then(() => {
-        // Reload page to trigger auth prompt
-        window.location.reload();
-      }).catch(() => {
-        // Always reload even on error
-        window.location.reload();
-      });
+      // Clear stored credentials
+      clearAuthCredentials();
+      // Show login panel
+      showLoginPanel();
+      log('Logged out');
     }
 
     async function sendEvent() {
@@ -374,13 +396,120 @@
       }
     }
 
+    // ============ AUTHENTICATION FUNCTIONS ============
+
+    // Get stored auth credentials from sessionStorage
+    function getStoredAuthHeader() {
+      const stored = sessionStorage.getItem('adminAuthToken');
+      if (stored) {
+        return { 'Authorization': `Basic ${stored}` };
+      }
+      return null;
+    }
+
+    // Store auth credentials in sessionStorage
+    function storeAuthCredentials(user, pass) {
+      const b64 = btoa(`${user}:${pass}`);
+      sessionStorage.setItem('adminAuthToken', b64);
+      sessionStorage.setItem('adminUser', user);
+      document.getElementById('adminUser').value = user;
+      document.getElementById('adminPass').value = pass;
+      document.getElementById('currentUser').textContent = user;
+    }
+
+    // Get auth header - use stored creds, fallback to form input
+    function getAuthHeader() {
+      const stored = getStoredAuthHeader();
+      if (stored) return stored;
+
+      const user = document.getElementById('adminUser').value;
+      const pass = document.getElementById('adminPass').value;
+      if (!user || !pass) {
+        throw new Error('Admin credentials not entered');
+      }
+      const b64 = btoa(`${user}:${pass}`);
+      return { 'Authorization': `Basic ${b64}` };
+    }
+
+    // Clear stored auth (logout)
+    function clearAuthCredentials() {
+      sessionStorage.removeItem('adminAuthToken');
+      sessionStorage.removeItem('adminUser');
+      document.getElementById('adminUser').value = '';
+      document.getElementById('adminPass').value = '';
+    }
+
+    // Show login panel, hide main content
+    function showLoginPanel() {
+      document.getElementById('loginPanel').style.display = 'block';
+      document.getElementById('mainPanel').style.display = 'none';
+      document.getElementById('adminUser').value = '';
+      document.getElementById('adminPass').value = '';
+      log('Please log in to continue');
+    }
+
+    // Show main panel, hide login
+    function showMainPanel() {
+      document.getElementById('loginPanel').style.display = 'none';
+      document.getElementById('mainPanel').style.display = 'block';
+      const user = sessionStorage.getItem('adminUser') || 'admin';
+      document.getElementById('currentUser').textContent = user;
+      log(`✓ Logged in as ${user}`);
+    }
+
+    // Handle login form submission
+    async function handleLogin() {
+      const user = document.getElementById('loginUser').value.trim();
+      const pass = document.getElementById('loginPass').value.trim();
+      const errorEl = document.getElementById('loginError');
+
+      if (!user || !pass) {
+        errorEl.textContent = 'Please enter username and password';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      try {
+        // Test credentials using validation endpoint (doesn't trigger browser auth popup)
+        const b64 = btoa(`${user}:${pass}`);
+        const res = await fetch('/api/admin/validate', {
+          method: 'POST',
+          headers: { 'Authorization': `Basic ${b64}` }
+        });
+
+        const data = await res.json();
+        
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Invalid credentials');
+        }
+
+        // Credentials are valid, store them
+        storeAuthCredentials(user, pass);
+        errorEl.style.display = 'none';
+        showMainPanel();
+      } catch (e) {
+        errorEl.textContent = 'Login failed: ' + e.message;
+        errorEl.style.display = 'block';
+      }
+    }
+
+    // Initialize on page load
+    function initializeAuth() {
+      const stored = getStoredAuthHeader();
+      if (stored) {
+        showMainPanel();
+      } else {
+        showLoginPanel();
+      }
+    }
+
     // ============ LOCATION MANAGEMENT FUNCTIONS ============
 
     async function loadLocations() {
       try {
         const res = await fetch('/admin/locations', {
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
         });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -443,13 +572,16 @@
         const res = await fetch('/admin/locations', {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
           body: JSON.stringify({ location_key: locationKey, location_name: locationName, city })
         });
 
         const data = await res.json();
         if (!data.success) {
-          throw new Error(data.error || 'Failed to create location');
+          const errorMsg = data.error || 'Failed to create location';
+          alert(`Error: ${errorMsg}`);
+          log('CreateLocation error: ' + errorMsg);
+          return;
         }
 
         log(`✓ Created location: ${locationName} (${locationKey})`);
@@ -458,6 +590,7 @@
         document.getElementById('newLocationCity').value = '';
         loadLocations();
       } catch (e) {
+        alert(`Error: ${e.message}`);
         log('CreateLocation error: ' + e.message);
       }
     }
@@ -477,18 +610,22 @@
         const res = await fetch(`/admin/locations/${locationKey}`, {
           method: 'PUT',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
           body: JSON.stringify(updateData)
         });
 
         const data = await res.json();
         if (!data.success) {
-          throw new Error(data.error || 'Failed to update location');
+          const errorMsg = data.error || 'Failed to update location';
+          alert(`Error: ${errorMsg}`);
+          log('UpdateLocation error: ' + errorMsg);
+          return;
         }
 
         log('✓ Location updated successfully');
         loadLocations();
       } catch (e) {
+        alert(`Error: ${e.message}`);
         log('UpdateLocation error: ' + e.message);
       }
     }
@@ -502,17 +639,21 @@
         const res = await fetch(`/admin/locations/${locationKey}`, {
           method: 'DELETE',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
         });
 
         const data = await res.json();
         if (!data.success) {
-          throw new Error(data.error || 'Failed to delete location');
+          const errorMsg = data.error || 'Failed to delete location';
+          alert(`Error: ${errorMsg}`);
+          log('DeleteLocation error: ' + errorMsg);
+          return;
         }
 
         log(`✓ Location "${locationName}" deactivated`);
         loadLocations();
       } catch (e) {
+        alert(`Error: ${e.message}`);
         log('DeleteLocation error: ' + e.message);
       }
     }
@@ -526,7 +667,7 @@
 
         const res = await fetch(url, {
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
         });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -600,13 +741,16 @@
         const res = await fetch('/admin/booths', {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
           body: JSON.stringify({ booth_name: boothName, location_key: locationKey })
         });
 
         const data = await res.json();
         if (!data.success) {
-          throw new Error(data.error || 'Failed to create booth');
+          const errorMsg = data.error || 'Failed to create booth';
+          alert(`Error: ${errorMsg}`);
+          log('CreateBooth error: ' + errorMsg);
+          return;
         }
 
         log(`✓ Created booth: ${boothName}`);
@@ -614,6 +758,7 @@
         document.getElementById('newLocationKey').value = '';
         loadBooths();
       } catch (e) {
+        alert(`Error: ${e.message}`);
         log('CreateBooth error: ' + e.message);
       }
     }
@@ -654,7 +799,7 @@
         const res = await fetch(`/admin/booths/${boothId}`, {
           method: 'PUT',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
           body: JSON.stringify(body)
         });
 
@@ -663,7 +808,10 @@
         console.log('Response data:', data);
 
         if (!res.ok || !data.success) {
-          throw new Error(data.error || `HTTP ${res.status}: Failed to update booth`);
+          const errorMsg = data.error || `HTTP ${res.status}: Failed to update booth`;
+          alert(`Error: ${errorMsg}`);
+          log('UpdateBooth error: ' + errorMsg);
+          return;
         }
 
         log('✓ Booth updated successfully');
@@ -671,6 +819,7 @@
         loadBooths();
       } catch (e) {
         console.error('UpdateBooth error:', e);
+        alert(`Error: ${e.message}`);
         log('UpdateBooth error: ' + e.message);
       }
     }
@@ -684,17 +833,21 @@
         const res = await fetch(`/admin/booths/${boothId}`, {
           method: 'DELETE',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
         });
 
         const data = await res.json();
         if (!data.success) {
-          throw new Error(data.error || 'Failed to delete booth');
+          const errorMsg = data.error || 'Failed to delete booth';
+          alert(`Error: ${errorMsg}`);
+          log('DeleteBooth error: ' + errorMsg);
+          return;
         }
 
         log(`✓ Booth "${boothName}" deactivated`);
         loadBooths();
       } catch (e) {
+        alert(`Error: ${e.message}`);
         log('DeleteBooth error: ' + e.message);
       }
     }
@@ -708,21 +861,26 @@
         const res = await fetch(`/admin/booths/${boothId}/regenerate-key`, {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
         });
 
         const data = await res.json();
         if (!data.success) {
-          throw new Error(data.error || 'Failed to regenerate key');
+          const errorMsg = data.error || 'Failed to regenerate key';
+          alert(`Error: ${errorMsg}`);
+          log('RegenerateKey error: ' + errorMsg);
+          return;
         }
 
         log(`✓ New API key for "${boothName}": ${data.booth.api_key}`);
         loadBooths();
       } catch (e) {
+        alert(`Error: ${e.message}`);
         log('RegenerateKey error: ' + e.message);
       }
     }
 
+    initializeAuth();
     refreshHealth();
   </script>
 </body>

@@ -53,8 +53,8 @@ function adminAuth(req, res, next) {
   return res.status(401).send('Invalid credentials.');
 }
 
-// Map /admin.html to existing file in src or bridge/admin.html with authentication
-app.get('/admin.html', adminAuth, (req, res) => {
+// Map /admin.html to existing file in src or bridge/admin.html (no auth required - auth handled by login form)
+app.get('/admin.html', (req, res) => {
   try {
     const srcAdmin = path.join(__dirname, '../frontend/src', 'admin.html');
     if (fs.existsSync(srcAdmin)) return res.sendFile(srcAdmin);
@@ -70,6 +70,21 @@ app.get('/admin.html', adminAuth, (req, res) => {
 app.get('/admin/logout', (req, res) => {
   res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
   res.status(401).send('Logged out');
+});
+
+// Admin credentials validation endpoint (for login form - no WWW-Authenticate header to prevent browser popup)
+app.post('/api/admin/validate', (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Basic ')) {
+    return res.status(401).json({ success: false, error: 'Authentication required' });
+  }
+  const b64 = auth.split(' ')[1];
+  const [user, pass] = Buffer.from(b64, 'base64').toString().split(':');
+  if (user === ADMIN_USER && pass === ADMIN_PASS) {
+    return res.status(200).json({ success: true });
+  }
+  // Return 401 WITHOUT WWW-Authenticate header to prevent browser popup
+  return res.status(401).json({ success: false, error: 'Invalid credentials' });
 });
 
 // Curl-style request/response logging to console
