@@ -12,15 +12,6 @@
 <body class="payment-screen"
   style="background-image: url('../assets/background.png'); background-size: cover; background-position: center; background-repeat: no-repeat;">
 
-  <!-- Configuration Button (top-right corner) -->
-  <div id="configBtnContainer" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
-    <button id="configBtn" onclick="openBoothConfig()"
-      style="background: rgba(255, 255, 255, 0.9); border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px;"
-      title="Booth Configuration (Ctrl+Shift+C)">
-      ⚙️ <span>Config</span>
-    </button>
-  </div>
-
   <div class="container">
 
     <div id="qr-code-wrapper" class="qr-code-wrapper loading"
@@ -37,21 +28,39 @@
     let tapTimer = null;
 
     // 5-tap gesture to open config (anywhere on screen)
-    document.addEventListener('click', () => {
-      tapCount++;
-      if (tapCount === 1) {
-        tapTimer = setTimeout(() => { tapCount = 0; }, 2000); // reset after 2 seconds
-      }
-      if (tapCount >= 5) {
-        clearTimeout(tapTimer);
-        tapCount = 0;
-        openBoothConfig();
-      }
-    });
+    function setupTapGesture() {
+      console.log('[5-tap] Gesture listener registered');
+      document.addEventListener('click', (e) => {
+        tapCount++;
+        console.log('[5-tap] Tap count:', tapCount);
+        if (tapCount === 1) {
+          tapTimer = setTimeout(() => {
+            console.log('[5-tap] Timer reset');
+            tapCount = 0;
+          }, 2000);
+        }
+        if (tapCount >= 5) {
+          console.log('[5-tap] Opening config!');
+          clearTimeout(tapTimer);
+          tapCount = 0;
+          openBoothConfig();
+        }
+      });
+    }
 
     window.addEventListener('DOMContentLoaded', async () => {
-      // Hide config button if already authenticated
-      hideConfigIfAuthenticated();
+      // Setup 5-tap gesture
+      setupTapGesture();
+
+      // Check if booth is configured
+      const boothConfig = await window.electronAPI.getBoothConfig();
+      if (!boothConfig || !boothConfig.apiKey || !boothConfig.serverUrl) {
+        // Not configured - launch config screen
+        openBoothConfig();
+        return;
+      }
+
+      // Authenticated - proceed with QR code
       const config = await window.electronAPI.getConfig();
       const amountInRupees = Number(localStorage.getItem('orderAmount')) || config.payment.amountInRupees;
       // Show loader while loading QR
@@ -61,24 +70,31 @@
     });
 
     async function generateQRCode(amountInRupees) {
+      console.log('[generateQRCode] Starting with amount:', amountInRupees);
       try {
+        console.log('[generateQRCode] Calling createOrder...');
         const res = await window.electronAPI.createOrder(
           amountInRupees * 100,
           'Pixora Photo Session'
         );
+        console.log('[generateQRCode] Received response:', res);
         const wrapperEl = document.getElementById('qr-code-wrapper');
         if (!res?.success || !res?.qrCode?.payment_session_id) {
+          console.error('[generateQRCode] Invalid response - success:', res?.success, 'payment_session_id:', res?.qrCode?.payment_session_id);
           if (wrapperEl) wrapperEl.classList.remove('loading');
           throw new Error('Invalid Cashfree response');
         }
         qrCodeId = res?.qrCode?.order_id;
         if (wrapperEl) wrapperEl.classList.remove('loading');
+        console.log('[generateQRCode] Initializing Cashfree with mode:', res?.qrCode?.env);
         const cashfree = Cashfree({ mode: res?.qrCode?.env });
+        console.log('[generateQRCode] Calling cashfree.checkout...');
         cashfree.checkout({
           paymentSessionId: res?.qrCode?.payment_session_id,
           redirectTarget: "_self",
           paymentMethod: { upi: { flow: "qr" } }
         });
+        console.log('[generateQRCode] Cashfree checkout initiated');
       } catch (e) {
         const wrapperEl = document.getElementById('qr-code-wrapper');
         if (wrapperEl) wrapperEl.classList.remove('loading');
@@ -97,29 +113,8 @@
     }
 
     function openBoothConfig() {
+      console.log('[openBoothConfig] Opening config page');
       window.electronAPI.openBoothConfig();
-    }
-
-    async function hideConfigIfAuthenticated() {
-      const container = document.getElementById('configBtnContainer');
-      if (!container) return;
-      try {
-        const booth = await window.electronAPI.getBoothConfig();
-        if (!booth || !booth.apiKey || !booth.serverUrl) return; // not configured
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 2500);
-        const res = await fetch(`${booth.serverUrl}/api/booth/info`, {
-          method: 'GET',
-          headers: { 'Authorization': `Bearer ${booth.apiKey}` },
-          signal: ctrl.signal
-        });
-        clearTimeout(t);
-        if (res.ok) {
-          container.style.display = 'none';
-        }
-      } catch (_) {
-        // ignore; leave button visible if we can't verify
-      }
     }
 
   </script>
