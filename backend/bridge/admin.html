@@ -376,11 +376,21 @@
 
     // ============ LOCATION MANAGEMENT FUNCTIONS ============
 
+    function getAuthHeader() {
+      const user = document.getElementById('adminUser').value;
+      const pass = document.getElementById('adminPass').value;
+      if (!user || !pass) {
+        throw new Error('Admin credentials not entered');
+      }
+      const b64 = btoa(`${user}:${pass}`);
+      return { 'Authorization': `Basic ${b64}` };
+    }
+
     async function loadLocations() {
       try {
         const res = await fetch('/admin/locations', { 
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
         });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -443,7 +453,7 @@
         const res = await fetch('/admin/locations', {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
           body: JSON.stringify({ location_key: locationKey, location_name: locationName, city })
         });
 
@@ -477,7 +487,7 @@
         const res = await fetch(`/admin/locations/${locationKey}`, {
           method: 'PUT',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
           body: JSON.stringify(updateData)
         });
 
@@ -502,7 +512,7 @@
         const res = await fetch(`/admin/locations/${locationKey}`, {
           method: 'DELETE',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
         });
 
         const data = await res.json();
@@ -526,7 +536,7 @@
 
         const res = await fetch(url, { 
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
         });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -600,7 +610,7 @@
         const res = await fetch('/admin/booths', {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
           body: JSON.stringify({ booth_name: boothName, location_key: locationKey })
         });
 
@@ -654,7 +664,7 @@
         const res = await fetch(`/admin/booths/${boothId}`, {
           method: 'PUT',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
           body: JSON.stringify(body)
         });
 
@@ -684,7 +694,7 @@
         const res = await fetch(`/admin/booths/${boothId}`, {
           method: 'DELETE',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
         });
 
         const data = await res.json();
@@ -708,7 +718,7 @@
         const res = await fetch(`/admin/booths/${boothId}/regenerate-key`, {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
         });
 
         const data = await res.json();
