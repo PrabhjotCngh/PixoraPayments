@@ -25,7 +25,7 @@ async function createCashfreeOrder({ amount, description, locationKey, boothCode
         },
         order_tags: {
             location_code: locationKey,
-            booth_code: boothCode  // ✅ UNIQUE BOOTH IDENTIFIER FOR CASHFREE
+            booth_code: boothCode  // UNIQUE BOOTH IDENTIFIER FOR CASHFREE
         }
     };
 

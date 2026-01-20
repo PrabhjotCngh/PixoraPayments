@@ -330,7 +330,7 @@
     <script>
         const APP_VERSION = '1.1.0'; // Read from package.json
         const GITHUB_REPO = 'PrabhjotCngh/PixoraPayments';
-        
+
         const serverUrlInput = document.getElementById('serverUrl');
         const apiKeyInput = document.getElementById('apiKey');
         const testBtn = document.getElementById('testBtn');
@@ -371,24 +371,24 @@
 
         async function checkLatestVersion() {
             setLoading(checkUpdateBtn, true, 'Checking...');
-            
+
             try {
                 const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
-                
+
                 if (!response.ok) {
                     throw new Error('Failed to fetch latest release');
                 }
-                
+
                 const latest = await response.json();
                 const latestVersion = latest.tag_name.replace('v', '');
-                
+
                 console.log('Current version:', APP_VERSION);
                 console.log('Latest version:', latestVersion);
-                
+
                 // Compare versions (simple string comparison works for semver)
                 if (compareVersions(latestVersion, APP_VERSION) > 0) {
                     showMessage(`🎉 New version available: v${latestVersion}! Visit GitHub to download.`, 'info');
-                    
+
                     // Open download link after 2 seconds
                     setTimeout(() => {
                         if (confirm(`Version ${latestVersion} is available.\n\nOpen download page in browser?`)) {
@@ -409,15 +409,15 @@
         function compareVersions(v1, v2) {
             const parts1 = v1.split('.').map(Number);
             const parts2 = v2.split('.').map(Number);
-            
+
             for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
                 const part1 = parts1[i] || 0;
                 const part2 = parts2[i] || 0;
-                
+
                 if (part1 > part2) return 1;
                 if (part1 < part2) return -1;
             }
-            
+
             return 0;
         }
 

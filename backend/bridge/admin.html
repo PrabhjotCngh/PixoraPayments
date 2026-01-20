@@ -706,7 +706,18 @@
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(booth.booth_name)}</td>
             <td style="padding:8px;border:1px solid #ddd;"><code>${escapeHtml(booth.location_key)}</code></td>
             <td style="padding:8px;border:1px solid #ddd;"><code style="color:#007aff;font-weight:600;">${escapeHtml(booth.booth_code || 'N/A')}</code></td>
-            <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:11px;" title="${escapeHtml(booth.api_key)}">${apiKeyDisplay}</td>
+            <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:11px;" title="${escapeHtml(booth.api_key)}">
+              <span style="display:inline-flex;align-items:center;gap:8px;">
+                <span>${apiKeyDisplay}</span>
+                <button onclick='copyToClipboard("${escapeHtml(booth.api_key)}", this)' 
+                  style="padding:4px 8px;background:transparent;color:#007aff;border:1px solid #007aff;border-radius:4px;cursor:pointer;font-size:10px;transition:all 0.2s;" 
+                  onmouseover="this.style.background='#f0f8ff'; this.style.borderColor='#0051d5'; this.style.color='#0051d5'" 
+                  onmouseout="this.style.background='transparent'; this.style.borderColor='#007aff'; this.style.color='#007aff'"
+                  title="Copy full API key">
+                  📋 Copy
+                </button>
+              </span>
+            </td>
             <td style="padding:8px;border:1px solid #ddd;">
               <span style="display:inline-block;padding:2px 6px;background:${statusColor};color:white;border-radius:3px;font-size:11px;">${booth.status.toUpperCase()}</span>
             </td>
@@ -726,6 +737,34 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    async function copyToClipboard(text, button) {
+      try {
+        await navigator.clipboard.writeText(text);
+        
+        // Visual feedback
+        const originalText = button.innerHTML;
+        button.innerHTML = '✓ Copied!';
+        button.style.background = '#34c759';
+        button.style.color = 'white';
+        button.style.borderColor = '#34c759';
+        
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.style.background = 'transparent';
+          button.style.color = '#007aff';
+          button.style.borderColor = '#007aff';
+        }, 2000);
+        
+        log(`✓ API key copied to clipboard`);
+      } catch (error) {
+        console.error('Copy failed:', error);
+        
+        // Fallback: show alert with the key
+        alert(`Copy failed. Here's the API key:\n\n${text}`);
+        log('✗ Copy failed, key shown in alert');
+      }
     }
 
     async function createBooth() {
