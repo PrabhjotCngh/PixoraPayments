@@ -1,6 +1,6 @@
 {
   "name": "pixorapayments",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Photobooth Payment Launcher with Cashfree UPI Integration",
   "main": "frontend/main.js",
   "scripts": {
@@ -25,9 +25,8 @@
     "appId": "com.pixora.photorooms",
     "productName": "PixoraPayments",
     "files": [
-      "main.js",
-      "preload.js",
-      "server.js",
+      "frontend/**",
+      "backend/**",
       "config.json",
       "assets/**",
       "src/**",

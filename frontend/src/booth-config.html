@@ -290,8 +290,9 @@
         <!-- Configuration Form -->
         <div class="form-section">
             <label for="serverUrl">Server URL</label>
-            <input type="text" id="serverUrl" placeholder="http://127.0.0.1:3000" value="http://127.0.0.1:3000">
-            <div class="hint">The backend server URL (e.g., http://127.0.0.1:3000 or https://api.yourserver.com)</div>
+            <input type="text" id="serverUrl" placeholder="https://pixora.textberry.io"
+                value="https://pixora.textberry.io">
+            <div class="hint">The backend server URL (e.g., https://pixora.textberry.io)</div>
         </div>
 
         <div class="form-section">
@@ -307,6 +308,9 @@
             <button class="btn btn-success" id="saveBtn" disabled>
                 <span id="saveBtnText">💾 Save Configuration</span>
             </button>
+            <button class="btn btn-secondary" id="quitBtn" disabled>
+                ⛔ Quit App
+            </button>
         </div>
 
         <div class="button-group">
@@ -316,7 +320,7 @@
         </div>
 
         <div class="shortcut-hint">
-            💡 Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> to open this config screen anytime
+            💡 Tap anywhere on the screen 5 times quickly to open this config screen
         </div>
     </div>
 
@@ -325,6 +329,7 @@
         const apiKeyInput = document.getElementById('apiKey');
         const testBtn = document.getElementById('testBtn');
         const saveBtn = document.getElementById('saveBtn');
+        const quitBtn = document.getElementById('quitBtn');
         const clearBtn = document.getElementById('clearBtn');
         const messageBox = document.getElementById('messageBox');
         const statusBadge = document.getElementById('statusBadge');
@@ -353,6 +358,7 @@
 
         testBtn.addEventListener('click', testConnection);
         saveBtn.addEventListener('click', saveConfiguration);
+        quitBtn.addEventListener('click', quitAppNow);
         clearBtn.addEventListener('click', clearConfiguration);
 
         async function testConnection() {
@@ -373,7 +379,7 @@
             saveBtn.disabled = true;
 
             try {
-                const response = await fetch(`${serverUrl}/api/test-booth-auth`, {
+                const response = await fetch(`${serverUrl}/api/booth/info`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${apiKey}`
@@ -425,14 +431,29 @@
                     boothCode: currentBoothData.booth_code
                 });
 
-                showMessage('✅ Configuration saved successfully! Restart the app to apply changes.', 'success');
+                showMessage('✅ Configuration saved. Click "Quit App" to apply changes.', 'success');
                 statusBadge.textContent = 'Configured';
                 statusBadge.className = 'status-badge status-configured';
+                // Enable quit button after successful save
+                quitBtn.disabled = false;
             } catch (error) {
                 console.error('Save config error:', error);
                 showMessage(`❌ Failed to save: ${error.message}`, 'error');
             } finally {
                 setLoading(saveBtn, false, '💾 Save Configuration');
+            }
+        }
+
+        async function quitAppNow() {
+            try {
+                quitBtn.disabled = true;
+                quitBtn.textContent = '⛔ Quitting...';
+                await window.electronAPI.quitApp();
+            } catch (e) {
+                console.error('Quit failed:', e);
+                showMessage('Could not quit automatically. Please close the app manually.', 'error');
+                quitBtn.disabled = false;
+                quitBtn.textContent = '⛔ Quit App';
             }
         }
 
@@ -443,7 +464,7 @@
 
             try {
                 await window.electronAPI.clearBoothConfig();
-                serverUrlInput.value = 'http://127.0.0.1:3000';
+                serverUrlInput.value = 'https://pixora.textberry.io';
                 apiKeyInput.value = '';
                 currentBoothData = null;
                 boothInfo.style.display = 'none';
