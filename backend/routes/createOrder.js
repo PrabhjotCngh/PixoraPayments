@@ -23,7 +23,7 @@ const orderService = require('../services/orderService');
  */
 router.post('/create-order', authenticateBooth, async (req, res) => {
   try {
-    const { amount, description } = req.body;
+    const { description } = req.body;
     const idempotencyKey = req.headers['x-idempotency-key'];
 
     // Validate idempotency key
@@ -41,30 +41,27 @@ router.post('/create-order', authenticateBooth, async (req, res) => {
       });
     }
 
+    // Security: location_key, booth_code, and price_inr come from authenticated booth only
+    const { id: booth_id, location_key, booth_code, price_inr } = req.booth;
+
+    // Server determines amount from booth's configured price (not from client)
+    const boothPriceInr = price_inr || 50.00; // Default to ₹50 if not set
+    const amountInPaise = Math.round(boothPriceInr * 100);
+
     // Validate amount
-    if (!amount || typeof amount !== 'number' || amount <= 0) {
+    if (amountInPaise <= 0 || amountInPaise > 1000000) { // Max ₹10,000
       return res.status(400).json({
         success: false,
-        error: 'Invalid amount. Must be a positive number (in paise).'
+        error: 'Invalid booth price. Price must be between ₹0.01 and ₹10,000'
       });
     }
-
-    if (amount > 20000) { // Max ₹200
-      return res.status(400).json({
-        success: false,
-        error: 'Amount exceeds maximum allowed (₹200)'
-      });
-    }
-
-    // Security: location_key and booth_code come from authenticated booth only
-    const { id: booth_id, location_key, booth_code } = req.booth;
 
     // Create order with idempotency
     const result = await orderService.createOrder({
       booth_id,
       location_key,
       booth_code,  // ✅ Unique booth identifier
-      amount,
+      amount: amountInPaise,  // Use server-determined amount from booth price
       description: description || `Payment at ${booth_code}`,
       idempotency_key: idempotencyKey
     });
@@ -84,6 +81,7 @@ router.post('/create-order', authenticateBooth, async (req, res) => {
           id: result.order.id,
           order_id: result.order.order_id,
           amount: result.order.amount,
+          amount_inr: boothPriceInr,  // Include configured booth price
           location_key: result.order.location_key,
           status: result.order.status,
           created_at: result.order.created_at
@@ -106,6 +104,7 @@ router.post('/create-order', authenticateBooth, async (req, res) => {
         id: result.order.id,
         order_id: result.order.order_id,
         amount: result.order.amount,
+        amount_inr: boothPriceInr,  // Include configured booth price
         location_key: result.order.location_key,
         status: result.order.status,
         created_at: result.order.created_at

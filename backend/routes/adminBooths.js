@@ -17,7 +17,7 @@ router.get('/booths', async (req, res) => {
       // List all booths
       const db = require('../database/db');
       const query = await db.query(
-        'SELECT id, booth_name, api_key, location_key, booth_code, status, last_seen_at, created_at FROM booths ORDER BY created_at DESC'
+        'SELECT id, booth_name, api_key, location_key, booth_code, status, price_inr, last_seen_at, created_at FROM booths ORDER BY created_at DESC'
       );
       result = query.rows;
     }
@@ -42,12 +42,21 @@ router.get('/booths', async (req, res) => {
  */
 router.post('/booths', async (req, res) => {
   try {
-    const { booth_name, location_key } = req.body;
+    const { booth_name, location_key, price_inr = 50.00 } = req.body;
 
     if (!booth_name || !location_key) {
       return res.status(400).json({
         success: false,
         error: 'booth_name and location_key are required'
+      });
+    }
+
+    // Validate price
+    const priceNum = parseFloat(price_inr);
+    if (isNaN(priceNum) || priceNum <= 0 || priceNum > 10000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Price must be a number between ₹1 and ₹10,000'
       });
     }
 
@@ -57,7 +66,8 @@ router.post('/booths', async (req, res) => {
     const booth = await boothService.createBooth({
       booth_name: booth_name.trim(),
       location_key: location_key.trim(),
-      booth_code: booth_code ? booth_code.trim() : null
+      booth_code: booth_code ? booth_code.trim() : null,
+      price_inr: priceNum
     });
 
     res.status(201).json({
@@ -109,7 +119,7 @@ router.get('/booths/:id', async (req, res) => {
 router.put('/booths/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { booth_name, location_key, status } = req.body;
+    const { booth_name, location_key, status, price_inr } = req.body;
 
     // Check if booth exists
     const booth = await boothService.getBoothById(id);
@@ -118,6 +128,17 @@ router.put('/booths/:id', async (req, res) => {
         success: false,
         error: 'Booth not found'
       });
+    }
+
+    // Validate price if provided
+    if (price_inr !== undefined) {
+      const priceNum = parseFloat(price_inr);
+      if (isNaN(priceNum) || priceNum <= 0 || priceNum > 10000) {
+        return res.status(400).json({
+          success: false,
+          error: 'Price must be a number between ₹1 and ₹10,000'
+        });
+      }
     }
 
     const db = require('../database/db');
@@ -159,6 +180,11 @@ router.put('/booths/:id', async (req, res) => {
       }
       updates.push(`status = $${paramCount++}`);
       values.push(status);
+    }
+
+    if (price_inr !== undefined) {
+      updates.push(`price_inr = $${paramCount++}`);
+      values.push(parseFloat(price_inr));
     }
 
     if (updates.length === 0) {

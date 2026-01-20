@@ -189,6 +189,8 @@
           <input id="newBoothName" type="text" placeholder="e.g., HKV Main Booth" required style="width:200px;" />
           <label>Location Key:</label>
           <input id="newBoothLocationKey" type="text" placeholder="e.g., HKV" required style="width:150px;" />
+          <label>Price (₹):</label>
+          <input id="newBoothPrice" type="number" placeholder="50.00" value="50.00" min="1" max="10000" step="0.01" style="width:120px;" />
           <button type="submit" style="background:#007aff;color:white;border:none;">Create Booth</button>
         </div>
       </form>
@@ -208,6 +210,7 @@
               <th style="padding:8px;border:1px solid #ddd;">Booth Name</th>
               <th style="padding:8px;border:1px solid #ddd;">Location Key</th>
               <th style="padding:8px;border:1px solid #ddd;">Booth Code</th>
+              <th style="padding:8px;border:1px solid #ddd;">Price (₹)</th>
               <th style="padding:8px;border:1px solid #ddd;">API Key</th>
               <th style="padding:8px;border:1px solid #ddd;">Status</th>
               <th style="padding:8px;border:1px solid #ddd;">Last Seen</th>
@@ -217,7 +220,7 @@
           </thead>
           <tbody id="boothsTableBody">
             <tr>
-              <td colspan="8" style="padding:16px;text-align:center;color:#999;">Click "Load Booths" to fetch data</td>
+              <td colspan="9" style="padding:16px;text-align:center;color:#999;">Click "Load Booths" to fetch data</td>
             </tr>
           </tbody>
         </table>
@@ -236,6 +239,10 @@
           <label>Location Key:</label>
           <input id="editLocationKey" type="text"
             style="width:100%;max-width:300px;background:#f5f5f7;cursor:not-allowed;" disabled readonly />
+        </div>
+        <div class="row">
+          <label>Price (₹):</label>
+          <input id="editBoothPrice" type="number" min="1" max="10000" step="0.01" style="width:100%;max-width:300px;" />
         </div>
         <div class="row">
           <label>Status:</label>
@@ -691,7 +698,7 @@
     function displayBooths(booths) {
       const tbody = document.getElementById('boothsTableBody');
       if (!booths || booths.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="padding:16px;text-align:center;color:#999;">No booths found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="padding:16px;text-align:center;color:#999;">No booths found</td></tr>';
         return;
       }
 
@@ -701,12 +708,14 @@
         const lastSeen = booth.last_seen_at ? new Date(booth.last_seen_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never';
         const created = new Date(booth.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
         const apiKeyDisplay = booth.api_key.substring(0, 20) + '...';
+        const price = booth.price_inr ? `₹${parseFloat(booth.price_inr).toFixed(2)}` : '₹50.00';
 
         return `
           <tr>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(booth.booth_name)}</td>
             <td style="padding:8px;border:1px solid #ddd;"><code>${escapeHtml(booth.location_key)}</code></td>
             <td style="padding:8px;border:1px solid #ddd;"><code style="color:#007aff;font-weight:600;">${escapeHtml(booth.booth_code || 'N/A')}</code></td>
+            <td style="padding:8px;border:1px solid #ddd;font-weight:600;color:#34c759;">${price}</td>
             <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:11px;" title="${escapeHtml(booth.api_key)}">
               <span style="display:inline-flex;align-items:center;gap:8px;">
                 <span>${apiKeyDisplay}</span>
@@ -771,9 +780,15 @@
     async function createBooth() {
       const boothName = document.getElementById('newBoothName').value.trim();
       const locationKey = document.getElementById('newBoothLocationKey').value.trim();
+      const price = parseFloat(document.getElementById('newBoothPrice').value) || 50.00;
 
       if (!boothName || !locationKey) {
         log('Booth name and location key are required');
+        return;
+      }
+
+      if (price <= 0 || price > 10000) {
+        alert('Price must be between ₹1 and ₹10,000');
         return;
       }
 
@@ -782,7 +797,7 @@
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-          body: JSON.stringify({ booth_name: boothName, location_key: locationKey })
+          body: JSON.stringify({ booth_name: boothName, location_key: locationKey, price_inr: price })
         });
 
         const data = await res.json();
@@ -793,9 +808,10 @@
           return;
         }
 
-        log(`✓ Created booth: ${boothName}`);
+        log(`✓ Created booth: ${boothName} (₹${price.toFixed(2)})`);
         document.getElementById('newBoothName').value = '';
-        document.getElementById('newLocationKey').value = '';
+        document.getElementById('newBoothLocationKey').value = '';
+        document.getElementById('newBoothPrice').value = '50.00';
         loadBooths();
       } catch (e) {
         alert(`Error: ${e.message}`);
@@ -807,6 +823,7 @@
       document.getElementById('editBoothId').value = booth.id;
       document.getElementById('editBoothName').value = booth.booth_name;
       document.getElementById('editLocationKey').value = booth.location_key;
+      document.getElementById('editBoothPrice').value = booth.price_inr || 50.00;
       document.getElementById('editStatus').value = booth.status;
       document.getElementById('editModal').style.display = 'block';
       document.getElementById('modalBackdrop').style.display = 'block';
@@ -821,16 +838,24 @@
       const boothId = document.getElementById('editBoothId').value;
       const boothName = document.getElementById('editBoothName').value.trim();
       const status = document.getElementById('editStatus').value;
+      const price = parseFloat(document.getElementById('editBoothPrice').value);
 
-      console.log('UpdateBooth - boothId:', boothId, 'name:', boothName, 'status:', status);
+      console.log('UpdateBooth - boothId:', boothId, 'name:', boothName, 'status:', status, 'price:', price);
 
       try {
         const body = {};
         if (boothName) body.booth_name = boothName;
         if (status) body.status = status;
+        if (!isNaN(price) && price > 0) body.price_inr = price;
 
         if (Object.keys(body).length === 0) {
           log('No fields to update');
+          return;
+        }
+
+        // Validate price if provided
+        if (body.price_inr && (body.price_inr <= 0 || body.price_inr > 10000)) {
+          alert('Price must be between ₹1 and ₹10,000');
           return;
         }
 

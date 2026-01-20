@@ -26,6 +26,7 @@
     let qrCodeId = null;
     let tapCount = 0;
     let tapTimer = null;
+    let boothPriceInr = 50.00;  // Default price
 
     // 5-tap gesture to open config (anywhere on screen)
     function setupTapGesture() {
@@ -48,6 +49,38 @@
       });
     }
 
+    async function fetchBoothPrice() {
+      try {
+        const boothConfig = await window.electronAPI.getBoothConfig();
+        if (!boothConfig || !boothConfig.serverUrl) {
+          console.warn('[fetchBoothPrice] Booth not configured, using default price');
+          return boothPriceInr;
+        }
+
+        // Fetch booth price from server
+        const response = await fetch(`${boothConfig.serverUrl}/api/booth/info`, {
+          headers: {
+            'Authorization': `Bearer ${boothConfig.apiKey}`
+          }
+        });
+
+        if (!response.ok) {
+          console.warn('[fetchBoothPrice] Failed to fetch booth info, using default price:', response.status);
+          return boothPriceInr;
+        }
+
+        const data = await response.json();
+        if (data.booth && typeof data.booth.price_inr === 'number') {
+          boothPriceInr = data.booth.price_inr;
+          console.log('[fetchBoothPrice] Fetched booth price: ₹' + boothPriceInr.toFixed(2));
+        }
+        return boothPriceInr;
+      } catch (e) {
+        console.error('[fetchBoothPrice] Error fetching booth price:', e);
+        return boothPriceInr;
+      }
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
       // Setup 5-tap gesture
       setupTapGesture();
@@ -60,13 +93,13 @@
         return;
       }
 
-      // Authenticated - proceed with QR code
-      const config = await window.electronAPI.getConfig();
-      const amountInRupees = Number(localStorage.getItem('orderAmount')) || config.payment.amountInRupees;
+      // Fetch booth price from server
+      await fetchBoothPrice();
+
       // Show loader while loading QR
       const wrapperEl = document.getElementById('qr-code-wrapper');
       if (wrapperEl) wrapperEl.classList.add('loading');
-      await generateQRCode(amountInRupees);
+      await generateQRCode(boothPriceInr);
     });
 
     async function generateQRCode(amountInRupees) {
