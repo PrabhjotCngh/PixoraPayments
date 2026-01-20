@@ -5,9 +5,7 @@
   "main": "frontend/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
     "build:win": "electron-builder --win",
-    "dist": "electron-builder",
     "dev": "concurrently \"node backend/server.js\" \"electron .\"",
     "server": "node backend/server.js",
     "bridge:client": "node backend/bridge/windows-client.js",
