@@ -50,7 +50,7 @@ function createWindow() {
 
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(false);
-  mainWindow.webContents.openDevTools();
+  //mainWindow.webContents.openDevTools();
 
 
   // Respect configured window behavior and show the window
