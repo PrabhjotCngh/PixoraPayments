@@ -50,21 +50,8 @@ function createWindow() {
 
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(false);
-  //mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
-  // Register keyboard shortcuts
-  mainWindow.webContents.on('before-input-event', (event, input) => {
-    // Ctrl+Shift+C: Open booth configuration
-    if (input.control && input.shift && input.key.toLowerCase() === 'c') {
-      event.preventDefault();
-      mainWindow.loadFile(path.join(__dirname, 'src', 'booth-config.html'));
-    }
-    // Ctrl+Shift+H: Go back to home/payment screen
-    if (input.control && input.shift && input.key.toLowerCase() === 'h') {
-      event.preventDefault();
-      mainWindow.loadFile(path.join(__dirname, 'src', 'payment.html'));
-    }
-  });
 
   // Respect configured window behavior and show the window
   mainWindow.once('ready-to-show', () => {
