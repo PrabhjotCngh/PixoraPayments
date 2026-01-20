@@ -28,12 +28,10 @@
       "frontend/**",
       "backend/**",
       "config.json",
-      "assets/**",
-      "src/**",
       "package.json"
     ],
     "extraResources": [
-      "assets/**"
+      "frontend/assets/**"
     ],
     "directories": {
       "buildResources": "assets/build"
