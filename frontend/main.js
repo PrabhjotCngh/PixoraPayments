@@ -143,6 +143,11 @@ ipcMain.handle('get-cashfree-env', async () => {
   return 'sandbox';
 });
 
+// Generate UUID (for idempotency keys, etc.)
+ipcMain.handle('generate-uuid', async () => {
+  return crypto.randomUUID().toLowerCase();
+});
+
 // Get Device ID for bridge routing (env or hostname)
 ipcMain.handle('get-device-id', async () => {
   // Priority: .env DEVICE_ID -> stored file -> hostname

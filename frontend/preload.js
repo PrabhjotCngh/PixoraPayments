@@ -1,5 +1,4 @@
 const { contextBridge, ipcRenderer } = require('electron');
-const { randomUUID } = require('crypto');
 
 // Helper: best-effort wait for backend /health to be ready (handles first-launch race)
 async function ensureBackendReady(timeoutMs = 4000) {
@@ -77,8 +76,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       throw new Error('Booth not configured. Please configure the booth first (tap 5 times to open config)');
     }
 
-    // Generate idempotency key (lowercase for consistency)
-    const idempotencyKey = randomUUID().toLowerCase();
+    // Generate idempotency key via main process
+    const idempotencyKey = await ipcRenderer.invoke('generate-uuid');
     console.log('[createOrder] Request:', { amount, description, idempotencyKey, serverUrl: boothConfig.serverUrl });
 
     const url = `${boothConfig.serverUrl}/api/create-order`;
