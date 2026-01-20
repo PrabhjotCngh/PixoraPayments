@@ -166,7 +166,7 @@ async function getOrderByCashfreeOrderId(cashfreeOrderId) {
  * Update order status (e.g., after payment callback)
  */
 async function updateOrderStatus(orderId, status) {
-    const query = 'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *';
+    const query = 'UPDATE orders SET status = $1 WHERE id = $2 RETURNING *';
     const result = await db.query(query, [status, orderId]);
     return result.rows[0] || null;
 }

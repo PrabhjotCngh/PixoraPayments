@@ -21,45 +21,25 @@
             return params.get('order_id');
         }
 
-        async function getOrder(orderId, retryCount = 0, maxRetries = 10) {
+        async function getOrder(orderId) {
             try {
-                console.log(`[thankyou] Checking order status (attempt ${retryCount + 1}/${maxRetries + 1}):`, orderId);
                 const response = await fetch(`/api/get-order/${encodeURIComponent(orderId)}`);
                 const data = await response.json();
-                
-                console.log('[thankyou] Order status response:', data);
-                
                 if (data.success && data.paid) {
-                    console.log('[thankyou] Payment confirmed! Redirecting to success...');
                     window.location.replace('success.html');
-                } else if (retryCount < maxRetries) {
-                    // Retry after 2 seconds if payment not confirmed yet
-                    console.log(`[thankyou] Payment not confirmed yet, retrying in 2s...`);
-                    setTimeout(() => getOrder(orderId, retryCount + 1, maxRetries), 2000);
                 } else {
-                    // Max retries reached, payment not confirmed
-                    console.log('[thankyou] Max retries reached, payment not confirmed. Redirecting to failure...');
                     window.location.replace('failure.html');
                 }
             } catch (e) {
-                console.error('[thankyou] Error checking order:', e);
-                if (retryCount < maxRetries) {
-                    // Retry on network error too
-                    console.log(`[thankyou] Network error, retrying in 2s...`);
-                    setTimeout(() => getOrder(orderId, retryCount + 1, maxRetries), 2000);
-                } else {
-                    window.location.replace('failure.html');
-                }
+                window.location.replace('failure.html');
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             const orderId = getOrderIdFromUrl();
             if (orderId) {
-                console.log('[thankyou] Page loaded with order_id:', orderId);
                 getOrder(orderId);
             } else {
-                console.log('[thankyou] No order_id in URL');
                 window.location.replace('failure.html');
             }
         });
