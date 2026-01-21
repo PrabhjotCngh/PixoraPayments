@@ -218,6 +218,8 @@ router.put('/booths/:id', async (req, res) => {
 /**
  * DELETE /admin/booths/:id
  * Delete/deactivate a booth
+ * If booth is active: deactivate (soft delete)
+ * If booth is inactive: permanently delete from database (hard delete)
  */
 router.delete('/booths/:id', async (req, res) => {
   try {
@@ -232,13 +234,25 @@ router.delete('/booths/:id', async (req, res) => {
       });
     }
 
-    // Soft delete by setting status to inactive
-    await boothService.updateBoothStatus(id, 'inactive');
+    const db = require('../database/db');
 
-    res.json({
-      success: true,
-      message: 'Booth deactivated successfully'
-    });
+    // If booth is inactive, permanently delete it
+    if (booth.status === 'inactive') {
+      await db.query('DELETE FROM booths WHERE id = $1', [id]);
+      res.json({
+        success: true,
+        message: 'Booth permanently deleted',
+        isHardDelete: true
+      });
+    } else {
+      // If booth is active or maintenance, deactivate it (soft delete)
+      await boothService.updateBoothStatus(id, 'inactive');
+      res.json({
+        success: true,
+        message: 'Booth deactivated successfully',
+        isHardDelete: false
+      });
+    }
   } catch (error) {
     console.error('Delete booth error:', error);
     res.status(500).json({

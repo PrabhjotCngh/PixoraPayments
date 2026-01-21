@@ -793,10 +793,10 @@ git checkout -b feature/set-booth-price-from-admin
 **Phase 1: Database (1 hour)**
 ```bash
 # Create migration file
-touch backend/database/migrations/007_add_booth_price.sql
+touch backend/database/migrations/006_add_booth_price.sql
 # Edit migration
 # Test migration locally
-git add backend/database/migrations/007_add_booth_price.sql
+git add backend/database/migrations/006_add_booth_price.sql
 git commit -m "feat: add price_inr column to booths table with migration"
 ```
 

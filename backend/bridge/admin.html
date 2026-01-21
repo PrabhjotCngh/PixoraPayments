@@ -190,7 +190,8 @@
           <label>Location Key:</label>
           <input id="newBoothLocationKey" type="text" placeholder="e.g., HKV" required style="width:150px;" />
           <label>Price (₹):</label>
-          <input id="newBoothPrice" type="number" placeholder="250.00" value="250.00" min="1" max="10000" step="0.01" style="width:120px;" />
+          <input id="newBoothPrice" type="number" placeholder="250.00" value="250.00" min="1" max="10000" step="0.01"
+            style="width:120px;" />
           <button type="submit" style="background:#007aff;color:white;border:none;">Create Booth</button>
         </div>
       </form>
@@ -242,7 +243,8 @@
         </div>
         <div class="row">
           <label>Price (₹):</label>
-          <input id="editBoothPrice" type="number" min="1" max="10000" step="0.01" style="width:100%;max-width:300px;" />
+          <input id="editBoothPrice" type="number" min="1" max="10000" step="0.01"
+            style="width:100%;max-width:300px;" />
         </div>
         <div class="row">
           <label>Status:</label>
@@ -734,9 +736,9 @@
             <td style="padding:8px;border:1px solid #ddd;font-size:11px;">${lastSeen}</td>
             <td style="padding:8px;border:1px solid #ddd;font-size:11px;">${created}</td>
             <td style="padding:8px;border:1px solid #ddd;">
-              <button onclick='editBooth(${JSON.stringify(booth)})' style="font-size:11px;padding:4px 8px;margin:2px;">Edit</button>
-              <button onclick='regenerateKey("${booth.id}", "${escapeHtml(booth.booth_name)}")' style="font-size:11px;padding:4px 8px;background:#ff9500;color:white;border:none;margin:2px;">Regenerate Key</button>
-              <button onclick='deleteBooth("${booth.id}", "${escapeHtml(booth.booth_name)}")' style="font-size:11px;padding:4px 8px;background:#ff3b30;color:white;border:none;margin:2px;">Delete</button>
+              ${booth.status !== 'inactive' ? `<button onclick='editBooth(${JSON.stringify(booth)})' style="font-size:11px;padding:4px 8px;margin:2px;">Edit</button>` : ''}
+              ${booth.status === 'active' ? `<button onclick='regenerateKey("${booth.id}", "${escapeHtml(booth.booth_name)}")' style="font-size:11px;padding:4px 8px;background:#ff9500;color:white;border:none;margin:2px;">Regenerate Key</button>` : ''}
+              <button onclick='deleteBooth("${booth.id}", "${escapeHtml(booth.booth_name)}", "${booth.status}")' style="font-size:11px;padding:4px 8px;background:${booth.status === 'inactive' ? '#ff3b30' : '#ff9500'};color:white;border:none;margin:2px;">${booth.status === 'inactive' ? 'Delete' : 'Deactivate'}</button>
             </td>
           </tr>
         `;
@@ -889,8 +891,14 @@
       }
     }
 
-    async function deleteBooth(boothId, boothName) {
-      if (!confirm(`Are you sure you want to deactivate booth "${boothName}"?`)) {
+    async function deleteBooth(boothId, boothName, boothStatus) {
+      const isInactive = boothStatus === 'inactive';
+      const actionType = isInactive ? 'permanently delete' : 'deactivate';
+      const confirmMsg = isInactive 
+        ? `⚠️ PERMANENT DELETE: Are you sure you want to permanently delete booth "${boothName}"? This cannot be undone.`
+        : `Are you sure you want to deactivate booth "${boothName}"?`;
+
+      if (!confirm(confirmMsg)) {
         return;
       }
 
@@ -909,7 +917,11 @@
           return;
         }
 
-        log(`✓ Booth "${boothName}" deactivated`);
+        if (data.isHardDelete) {
+          log(`✓ Booth "${boothName}" permanently deleted from system`);
+        } else {
+          log(`✓ Booth "${boothName}" deactivated`);
+        }
         loadBooths();
       } catch (e) {
         alert(`Error: ${e.message}`);
