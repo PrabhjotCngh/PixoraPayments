@@ -852,24 +852,20 @@ git merge feature/set-booth-price-from-admin
 git push origin main
 ```
 
-**6. Deploy to production:**
+**6. Verify backend is healthy:**
 ```bash
-# SSH to EC2
-ssh ubuntu@pixora.textberry.io
+pm2 logs pixora-backend --lines 20
 
-# Pull latest changes
-cd /home/ubuntu/pixora/PixoraPayments
-git pull origin main
-
-# Run migration
-psql -U postgres -d pixora_payments -f backend/database/migrations/007_add_booth_price.sql
-
-# Restart backend
-pm2 restart pixora-backend
-
-# Verify
-pm2 logs pixora-backend
+# Wait for "Server listening on..." message
+# Check for any database connection errors
 ```
+
+**7. Test the changes:**
+- Access admin panel: `https://pixora.textberry.io/admin`
+- Login and verify booths table shows Price column
+- Edit a booth and change its price
+- Verify price is saved and reflected in the list
+- Check booth app (Windows) to ensure price displays correctly on payment
 
 ---
 
@@ -877,7 +873,7 @@ pm2 logs pixora-backend
 
 | Task | Time | Difficulty |
 |------|------|------------|
-| **Database migration** | 1 hour | Easy |
+| **Database migration** | 15 mins | Easy |
 | **Backend API updates** | 2 hours | Medium |
 | **Admin panel UI** | 2 hours | Easy-Medium |
 | **Booth app changes** | 1 hour | Easy |
@@ -895,7 +891,8 @@ pm2 logs pixora-backend
 
 **1. Backup database (IMPORTANT!):**
 ```bash
-pg_dump -U postgres pixora_payments > backup_$(date +%Y%m%d_%H%M%S).sql
+# Backup using your database superuser (postgres or admin user)
+pg_dump -U <db_superuser> pixora_payments > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
 **2. Pull latest code:**
@@ -906,13 +903,21 @@ git pull origin main
 
 **3. Run migration:**
 ```bash
-psql -U postgres -d pixora_payments -f backend/database/migrations/007_add_booth_price.sql
+psql -h localhost -U pixora_admin -d pixora_payments -f database/migrations/006_add_booth_price.sql
+```
+
+Enter your password when asked.
+
+**Note:** This assumes your PostgreSQL credentials are configured in `~/.pgpass` or similar. If you need to provide password via CLI:
+```bash
+PGPASSWORD="your_password" psql -h localhost -U pixora_admin -d pixora_payments -f database/migrations/006_add_booth_price.sql
 ```
 
 **4. Verify migration:**
 ```bash
-psql -U postgres -d pixora_payments -c "\d booths"
-# Should show price_inr column
+psql -h localhost -U pixora_admin -d pixora_payments -c "\d booths"
+# Should show price_inr column with: DECIMAL(10,2), NOT NULL, DEFAULT 250.00
+# And check_price_positive constraint
 ```
 
 **5. Restart backend:**
@@ -1038,12 +1043,33 @@ const priceDisplay = `₹${price.toFixed(2)}`; // ₹250.00 instead of ₹250
 
 ---
 
-## 📞 Support
+## 📞 Support & Troubleshooting
 
 If you encounter issues:
-1. Check server logs: `pm2 logs pixora-backend`
-2. Check database: `psql -U postgres -d pixora_payments`
-3. Verify migration ran: `SELECT price_inr FROM booths LIMIT 1;`
+
+**Check server logs:**
+```bash
+pm2 logs pixora-backend --lines 50
+```
+
+**Verify database migration ran:**
+```bash
+# Connect to database
+PGPASSWORD="<db_password>" psql -h localhost -U <db_user> -d pixora_payments
+
+# Inside psql, check:
+\d booths  # Should show price_inr column
+SELECT price_inr FROM booths LIMIT 1;  # Should show values
+```
+
+**Rollback if needed:**
+```bash
+# If migration fails, restore from backup:
+psql -U <db_user> -d pixora_payments < backup_YYYYMMDD_HHMMSS.sql
+
+# Then restart backend
+pm2 restart pixora-backend
+```
 4. Test API directly with curl or Postman
 5. Check booth app console logs
 
