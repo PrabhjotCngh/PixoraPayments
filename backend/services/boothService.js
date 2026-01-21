@@ -11,7 +11,7 @@ const db = require('../database/db');
  * @returns {Promise<Object>} Created booth details with booth_id, api_key, location_key, price_inr
  * @throws {Error} If location_key is invalid or inactive
  */
-async function createBooth({ booth_name, location_key, booth_code, price_inr = 50.00 }) {
+async function createBooth({ booth_name, location_key, booth_code, price_inr = 250.00 }) {
   // Validate required fields
   if (!booth_name || !location_key) {
     throw new Error('booth_name and location_key are required');

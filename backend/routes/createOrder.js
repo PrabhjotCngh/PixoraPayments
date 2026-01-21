@@ -45,7 +45,7 @@ router.post('/create-order', authenticateBooth, async (req, res) => {
     const { id: booth_id, location_key, booth_code, price_inr } = req.booth;
 
     // Server determines amount from booth's configured price (not from client)
-    const boothPriceInr = price_inr || 50.00; // Default to ₹50 if not set
+    const boothPriceInr = price_inr || 250.00; // Default to ₹250 if not set
     const amountInPaise = Math.round(boothPriceInr * 100);
 
     // Validate amount

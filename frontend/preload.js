@@ -78,7 +78,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Generate idempotency key via main process
     const idempotencyKey = await ipcRenderer.invoke('generate-uuid');
-    // Note: amount is no longer sent to server - server uses booth's configured price
+    // Note: amount is no longer sent to server - server uses booth's configured price (default ₹250)
     console.log('[createOrder] Request:', { description, idempotencyKey, serverUrl: boothConfig.serverUrl });
 
     const url = `${boothConfig.serverUrl}/api/create-order`;

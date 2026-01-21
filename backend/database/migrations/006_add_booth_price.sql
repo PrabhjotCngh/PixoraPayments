@@ -3,11 +3,11 @@
 
 -- Add price_inr column to booths table
 ALTER TABLE booths 
-ADD COLUMN IF NOT EXISTS price_inr DECIMAL(10,2) DEFAULT 50.00;
+ADD COLUMN IF NOT EXISTS price_inr DECIMAL(10,2) DEFAULT 250.00;
 
 -- Update existing booths to have default price if null
 UPDATE booths 
-SET price_inr = 50.00 
+SET price_inr = 250.00 
 WHERE price_inr IS NULL;
 
 -- Add NOT NULL constraint after setting defaults

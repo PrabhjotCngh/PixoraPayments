@@ -42,7 +42,7 @@ router.get('/booths', async (req, res) => {
  */
 router.post('/booths', async (req, res) => {
   try {
-    const { booth_name, location_key, price_inr = 50.00 } = req.body;
+    const { booth_name, location_key, price_inr = 250.00 } = req.body;
 
     if (!booth_name || !location_key) {
       return res.status(400).json({

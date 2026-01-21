@@ -190,7 +190,7 @@
           <label>Location Key:</label>
           <input id="newBoothLocationKey" type="text" placeholder="e.g., HKV" required style="width:150px;" />
           <label>Price (₹):</label>
-          <input id="newBoothPrice" type="number" placeholder="50.00" value="50.00" min="1" max="10000" step="0.01" style="width:120px;" />
+          <input id="newBoothPrice" type="number" placeholder="250.00" value="250.00" min="1" max="10000" step="0.01" style="width:120px;" />
           <button type="submit" style="background:#007aff;color:white;border:none;">Create Booth</button>
         </div>
       </form>
@@ -708,7 +708,7 @@
         const lastSeen = booth.last_seen_at ? new Date(booth.last_seen_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never';
         const created = new Date(booth.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
         const apiKeyDisplay = booth.api_key.substring(0, 20) + '...';
-        const price = booth.price_inr ? `₹${parseFloat(booth.price_inr).toFixed(2)}` : '₹50.00';
+        const price = booth.price_inr ? `₹${parseFloat(booth.price_inr).toFixed(2)}` : '₹250.00';
 
         return `
           <tr>
@@ -811,7 +811,7 @@
         log(`✓ Created booth: ${boothName} (₹${price.toFixed(2)})`);
         document.getElementById('newBoothName').value = '';
         document.getElementById('newBoothLocationKey').value = '';
-        document.getElementById('newBoothPrice').value = '50.00';
+        document.getElementById('newBoothPrice').value = '250.00';
         loadBooths();
       } catch (e) {
         alert(`Error: ${e.message}`);
@@ -823,7 +823,7 @@
       document.getElementById('editBoothId').value = booth.id;
       document.getElementById('editBoothName').value = booth.booth_name;
       document.getElementById('editLocationKey').value = booth.location_key;
-      document.getElementById('editBoothPrice').value = booth.price_inr || 50.00;
+      document.getElementById('editBoothPrice').value = booth.price_inr || 250.00;
       document.getElementById('editStatus').value = booth.status;
       document.getElementById('editModal').style.display = 'block';
       document.getElementById('modalBackdrop').style.display = 'block';

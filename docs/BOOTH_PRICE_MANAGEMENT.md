@@ -2,7 +2,7 @@
 
 ## 📝 What We're Building (Simple Explanation)
 
-Right now, all photobooths charge the same price (like ₹200 for everyone). But what if one booth is at a fancy mall and should charge ₹400, while another is at a college fest and should charge ₹300? 
+Right now, all photobooths charge the same price (like ₹250 for everyone). But what if one booth is at a fancy mall and should charge ₹400, while another is at a college fest and should charge ₹300? 
 
 We're building a feature where you (the admin) can set different prices for each booth, and customers will automatically pay that booth's specific price!
 
@@ -11,7 +11,7 @@ We're building a feature where you (the admin) can set different prices for each
 ## 🎯 Current vs New System
 
 ### **Current System (What We Have Now)**
-- All booths charge the same price: ₹200 (hardcoded in config)
+- All booths charge the same price: ₹250 (hardcoded in config)
 - To change price, you need to edit code and rebuild app
 - No way to have different prices for different booths
 
@@ -23,8 +23,8 @@ We're building a feature where you (the admin) can set different prices for each
 - Different locations can have different pricing strategies
 
 ### **Example Scenarios:**
-- **Connaught Place Mall booth** → ₹300 (premium location)
-- **Hauz Khas Village booth** → ₹200 (popular hangout)
+- **Connaught Place Mall booth** → ₹400 (premium location)
+- **Hauz Khas Village booth** → ₹250 (popular hangout)
 - **College Campus booth** → ₹150 (student discount)
 
 ---
@@ -76,7 +76,7 @@ booths (
   location_key VARCHAR(50),
   booth_code VARCHAR(10),
   status TEXT,
-  price_inr DECIMAL(10,2) DEFAULT 200.00,  -- NEW COLUMN!
+  price_inr DECIMAL(10,2) DEFAULT 250.00,  -- NEW COLUMN!
   last_seen_at TIMESTAMP,
   created_at TIMESTAMP
 )
@@ -87,11 +87,11 @@ booths (
 ```sql
 -- Add price column to booths table
 ALTER TABLE booths 
-ADD COLUMN IF NOT EXISTS price_inr DECIMAL(10,2) DEFAULT 200.00;
+ADD COLUMN IF NOT EXISTS price_inr DECIMAL(10,2) DEFAULT 250.00;
 
 -- Update existing booths to have default price
 UPDATE booths 
-SET price_inr = 200.00 
+SET price_inr = 250.00 
 WHERE price_inr IS NULL;
 
 -- Add NOT NULL constraint after setting defaults
@@ -137,7 +137,7 @@ function displayBooths(booths) {
   const tbody = document.getElementById('boothsTableBody');
   
   tbody.innerHTML = booths.map(booth => {
-    const price = booth.price_inr || 200.00; // Default to ₹200 if not set
+    const price = booth.price_inr || 250.00; // Default to ₹250 if not set
     
     return `
       <tr>
@@ -347,7 +347,7 @@ async function createBooth() {
       // Clear form
       document.getElementById('newBoothName').value = '';
       document.getElementById('newBoothLocationKey').value = '';
-      document.getElementById('newBoothPrice').value = '200.00'; // Reset to default
+      document.getElementById('newBoothPrice').value = '250.00'; // Reset to default
       
       loadBooths(); // Refresh table
     } else {
@@ -379,7 +379,7 @@ router.post('/booths', async (req, res) => {
 **Updated with price:**
 ```javascript
 router.post('/booths', async (req, res) => {
-  const { booth_name, location_key, price_inr = 50.00 } = req.body; // NEW: default ₹50
+  const { booth_name, location_key, price_inr = 250.00 } = req.body; // NEW: default ₹250
   
   // Validate price
   if (price_inr <= 0 || price_inr > 10000) {
@@ -725,7 +725,7 @@ async function generateQRCode(displayPrice) {
         Complete Payment
       </h2>
       <p style="color:rgba(255,255,255,0.8);font-size:20px;margin:10px 0;">
-        Amount: <strong id="priceDisplay">₹50.00</strong>
+        Amount: <strong id="priceDisplay">₹250.00</strong>
       </p>
     </div>
     
@@ -1033,7 +1033,7 @@ if (price <= 0) {
 ### **Issue 4: "Decimal places not showing"**
 **Solution:** Use `.toFixed(2)`:
 ```javascript
-const priceDisplay = `₹${price.toFixed(2)}`; // ₹50.00 instead of ₹50
+const priceDisplay = `₹${price.toFixed(2)}`; // ₹250.00 instead of ₹250
 ```
 
 ---
