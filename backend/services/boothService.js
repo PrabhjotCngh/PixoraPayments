@@ -7,10 +7,11 @@ const db = require('../database/db');
  * @param {Object} params - Booth creation parameters
  * @param {string} params.booth_name - Name of the booth
  * @param {string} params.location_key - Location key to associate booth with
- * @returns {Promise<Object>} Created booth details with booth_id, api_key, location_key
+ * @param {number} params.price_inr - Price in INR (default: 50.00)
+ * @returns {Promise<Object>} Created booth details with booth_id, api_key, location_key, price_inr
  * @throws {Error} If location_key is invalid or inactive
  */
-async function createBooth({ booth_name, location_key, booth_code }) {
+async function createBooth({ booth_name, location_key, booth_code, price_inr = 250.00 }) {
   // Validate required fields
   if (!booth_name || !location_key) {
     throw new Error('booth_name and location_key are required');
@@ -54,9 +55,9 @@ async function createBooth({ booth_name, location_key, booth_code }) {
 
   // Insert booth into database
   await db.query(
-    `INSERT INTO booths (id, booth_name, api_key, location_key, booth_code, status)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [boothId, booth_name, apiKey, location_key, finalBoothCode, 'active']
+    `INSERT INTO booths (id, booth_name, api_key, location_key, booth_code, status, price_inr)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [boothId, booth_name, apiKey, location_key, finalBoothCode, 'active', price_inr]
   );
 
   console.log(`Booth created: ${booth_name} (${boothId}) with code ${finalBoothCode} at location ${location_key}`);

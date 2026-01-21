@@ -58,7 +58,8 @@
   <h1>Pixora Admin</h1>
 
   <!-- Login Form (shown if not authenticated) -->
-  <div id="loginPanel" style="background:#f0f0f0;padding:20px;border-radius:8px;max-width:400px;margin:20px 0;display:none;">
+  <div id="loginPanel"
+    style="background:#f0f0f0;padding:20px;border-radius:8px;max-width:400px;margin:20px 0;display:none;">
     <h2 style="margin-top:0;">Login Required</h2>
     <p>Please enter your admin credentials to continue.</p>
     <div class="row">
@@ -70,7 +71,8 @@
       <input id="loginPass" type="password" placeholder="password" style="width:200px;" />
     </div>
     <div class="row">
-      <button onclick="handleLogin()" style="background:#34c759;color:white;border:none;padding:8px 16px;">Login</button>
+      <button onclick="handleLogin()"
+        style="background:#34c759;color:white;border:none;padding:8px 16px;">Login</button>
     </div>
     <div id="loginError" style="color:#f66;margin-top:10px;display:none;"></div>
   </div>
@@ -84,175 +86,185 @@
       <button onclick="logout()" style="background:#fee;border:1px solid #f99">Logout</button>
     </div>
 
-  <!-- Form Sections -->
-  <div style="display:none;">
-    <label>Admin User:</label>
-    <input id="adminUser" type="text" placeholder="admin" value="admin" />
-    <label>Admin Password:</label>
-    <input id="adminPass" type="password" placeholder="password" value="your_admin_password" />
-  </div>
+    <!-- Form Sections -->
+    <div style="display:none;">
+      <label>Admin User:</label>
+      <input id="adminUser" type="text" placeholder="admin" value="admin" />
+      <label>Admin Password:</label>
+      <input id="adminPass" type="password" placeholder="password" value="your_admin_password" />
+    </div>
 
-
-
-  <form class="section" onsubmit="event.preventDefault();">
-    <h2 style="font-size:16px;">Send Event</h2>
-    <label>Event Type:</label>
-    <input id="sendEventType" type="text" value="session_start" required />
-    <label>Device ID:</label>
-    <input id="sendDeviceId" type="text" placeholder="PIXORA_001" required />
-    <button type="button" onclick="sendEvent()">POST /event</button>
-    <button type="button" onclick="launchPayment()" style="margin-left:4px">Launch Payment</button>
-  </form>
-
-  <form class="section" onsubmit="event.preventDefault();">
-    <h2 style="font-size:16px;">Reset Credit</h2>
-    <label>Device ID:</label>
-    <input id="resetCreditDeviceId" type="text" placeholder="PIXORA_001" required />
-    <button type="button" onclick="resetCreditSection()">Reset Credit</button>
-  </form>
-
-  <form class="section" onsubmit="event.preventDefault();">
-    <h2 style="font-size:16px;">Rename Device ID</h2>
-    <label>Current Device ID:</label>
-    <input id="renameCurrentId" type="text" placeholder="current-id" required />
-    <label>New Device ID:</label>
-    <input id="renameNewId" type="text" placeholder="new-id" required />
-    <button type="button" onclick="renameDeviceId()">Set Device ID</button>
-  </form>
-  <div class="row">
-  </div>
-  <form class="section" onsubmit="event.preventDefault();" style="margin-top:16px;">
-    <h2 style="font-size:16px;margin-bottom:8px;">Update/Add Location Code</h2>
-    <label for="updateDeviceId">Device ID:</label>
-    <input id="updateDeviceId" type="text" placeholder="PIXORA_001" required />
-    <label for="updateLocationCode">Location Code:</label>
-    <input id="updateLocationCode" type="text" placeholder="Location Code" required />
-    <button type="button" onclick="saveLocationCode()">Save Location Code</button>
-  </form>
-
-  <!-- Location Management Section -->
-  <div class="section" style="margin-top:24px;border-top:2px solid #ddd;padding-top:16px;">
-    <h2 style="font-size:18px;margin-bottom:12px;">Location Management</h2>
-
-    <!-- Create New Location Form -->
-    <form onsubmit="event.preventDefault();createLocation();"
-      style="background:#f9f9fb;padding:12px;border-radius:6px;margin-bottom:16px;">
-      <h3 style="font-size:14px;margin:0 0 8px 0;">Create New Location</h3>
-      <div class="row">
-        <label>Location Key:</label>
-        <input id="newLocationKey" type="text" placeholder="e.g., CP, HKV" required style="width:120px;" />
-        <label>Location Name:</label>
-        <input id="newLocationName" type="text" placeholder="e.g., Connaught Place" required style="width:200px;" />
-        <label>City:</label>
-        <input id="newLocationCity" type="text" placeholder="e.g., New Delhi" required style="width:150px;" />
-        <button type="submit" style="background:#34c759;color:white;border:none;">Create Location</button>
-      </div>
+    <form class="section" onsubmit="event.preventDefault();">
+      <h2 style="font-size:16px;">Send Event</h2>
+      <label>Event Type:</label>
+      <input id="sendEventType" type="text" value="session_start" required />
+      <label>Device ID:</label>
+      <input id="sendDeviceId" type="text" placeholder="PIXORA_001" required />
+      <button type="button" onclick="sendEvent()">POST /event</button>
+      <button type="button" onclick="launchPayment()" style="margin-left:4px">Launch Payment</button>
     </form>
 
-    <!-- Locations Table -->
-    <div style="overflow-x:auto;">
-      <table id="locationsTable" style="width:100%;border-collapse:collapse;font-size:13px;">
-        <thead>
-          <tr style="background:#f5f5f7;text-align:left;">
-            <th style="padding:8px;border:1px solid #ddd;">Location Key</th>
-            <th style="padding:8px;border:1px solid #ddd;">Location Name</th>
-            <th style="padding:8px;border:1px solid #ddd;">City</th>
-            <th style="padding:8px;border:1px solid #ddd;">Status</th>
-            <th style="padding:8px;border:1px solid #ddd;">Created</th>
-            <th style="padding:8px;border:1px solid #ddd;">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="locationsTableBody">
-          <tr>
-            <td colspan="6" style="padding:16px;text-align:center;color:#999;">Click "Load Locations" to fetch data</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="row" style="margin-top:12px;">
-      <button onclick="loadLocations()" style="background:#34c759;color:white;border:none;">Load Locations</button>
-    </div>
-  </div>
-
-  <!-- Booth Management Section -->
-  <div class="section" style="margin-top:24px;border-top:2px solid #ddd;padding-top:16px;">
-    <h2 style="font-size:18px;margin-bottom:12px;">Booth Management</h2>
-
-    <!-- Create New Booth Form -->
-    <form onsubmit="event.preventDefault();createBooth();"
-      style="background:#f9f9fb;padding:12px;border-radius:6px;margin-bottom:16px;">
-      <h3 style="font-size:14px;margin:0 0 8px 0;">Create New Booth</h3>
-      <div class="row">
-        <label>Booth Name:</label>
-        <input id="newBoothName" type="text" placeholder="e.g., HKV Main Booth" required style="width:200px;" />
-        <label>Location Key:</label>
-        <input id="newBoothLocationKey" type="text" placeholder="e.g., HKV" required style="width:150px;" />
-        <button type="submit" style="background:#007aff;color:white;border:none;">Create Booth</button>
-      </div>
+    <form class="section" onsubmit="event.preventDefault();">
+      <h2 style="font-size:16px;">Reset Credit</h2>
+      <label>Device ID:</label>
+      <input id="resetCreditDeviceId" type="text" placeholder="PIXORA_001" required />
+      <button type="button" onclick="resetCreditSection()">Reset Credit</button>
     </form>
 
-    <!-- Filter Options -->
-    <div class="row" style="margin-bottom:12px;">
-      <label>Filter by Location:</label>
-      <input id="filterLocationKey" type="text" placeholder="Leave empty for all" style="width:150px;" />
-      <button onclick="loadBooths()" style="background:#34c759;color:white;border:none;">Load Booths</button>
+    <form class="section" onsubmit="event.preventDefault();">
+      <h2 style="font-size:16px;">Rename Device ID</h2>
+      <label>Current Device ID:</label>
+      <input id="renameCurrentId" type="text" placeholder="current-id" required />
+      <label>New Device ID:</label>
+      <input id="renameNewId" type="text" placeholder="new-id" required />
+      <button type="button" onclick="renameDeviceId()">Set Device ID</button>
+    </form>
+    <div class="row">
+    </div>
+    <form class="section" onsubmit="event.preventDefault();" style="margin-top:16px;">
+      <h2 style="font-size:16px;margin-bottom:8px;">Update/Add Location Code</h2>
+      <label for="updateDeviceId">Device ID:</label>
+      <input id="updateDeviceId" type="text" placeholder="PIXORA_001" required />
+      <label for="updateLocationCode">Location Code:</label>
+      <input id="updateLocationCode" type="text" placeholder="Location Code" required />
+      <button type="button" onclick="saveLocationCode()">Save Location Code</button>
+    </form>
+
+    <!-- Location Management Section -->
+    <div class="section" style="margin-top:24px;border-top:2px solid #ddd;padding-top:16px;">
+      <h2 style="font-size:18px;margin-bottom:12px;">Location Management</h2>
+
+      <!-- Create New Location Form -->
+      <form onsubmit="event.preventDefault();createLocation();"
+        style="background:#f9f9fb;padding:12px;border-radius:6px;margin-bottom:16px;">
+        <h3 style="font-size:14px;margin:0 0 8px 0;">Create New Location</h3>
+        <div class="row">
+          <label>Location Key:</label>
+          <input id="newLocationKey" type="text" placeholder="e.g., CP, HKV" required style="width:120px;" />
+          <label>Location Name:</label>
+          <input id="newLocationName" type="text" placeholder="e.g., Connaught Place" required style="width:200px;" />
+          <label>City:</label>
+          <input id="newLocationCity" type="text" placeholder="e.g., New Delhi" required style="width:150px;" />
+          <button type="submit" style="background:#34c759;color:white;border:none;">Create Location</button>
+        </div>
+      </form>
+
+      <!-- Locations Table -->
+      <div style="overflow-x:auto;">
+        <table id="locationsTable" style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#f5f5f7;text-align:left;">
+              <th style="padding:8px;border:1px solid #ddd;width:50px;">S.No</th>
+              <th style="padding:8px;border:1px solid #ddd;">Location Key</th>
+              <th style="padding:8px;border:1px solid #ddd;">Location Name</th>
+              <th style="padding:8px;border:1px solid #ddd;">City</th>
+              <th style="padding:8px;border:1px solid #ddd;">Status</th>
+              <th style="padding:8px;border:1px solid #ddd;">Created</th>
+              <th style="padding:8px;border:1px solid #ddd;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="locationsTableBody">
+            <tr>
+              <td colspan="7" style="padding:16px;text-align:center;color:#999;">Click "Load Locations" to fetch data
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button onclick="loadLocations()" style="background:#34c759;color:white;border:none;">Load Locations</button>
+      </div>
     </div>
 
-    <!-- Booths Table -->
-    <div style="overflow-x:auto;">
-      <table id="boothsTable" style="width:100%;border-collapse:collapse;font-size:13px;">
-        <thead>
-          <tr style="background:#f5f5f7;text-align:left;">
-            <th style="padding:8px;border:1px solid #ddd;">Booth Name</th>
-            <th style="padding:8px;border:1px solid #ddd;">Location Key</th>
-            <th style="padding:8px;border:1px solid #ddd;">Booth Code</th>
-            <th style="padding:8px;border:1px solid #ddd;">API Key</th>
-            <th style="padding:8px;border:1px solid #ddd;">Status</th>
-            <th style="padding:8px;border:1px solid #ddd;">Last Seen</th>
-            <th style="padding:8px;border:1px solid #ddd;">Created</th>
-            <th style="padding:8px;border:1px solid #ddd;">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="boothsTableBody">
-          <tr>
-            <td colspan="8" style="padding:16px;text-align:center;color:#999;">Click "Load Booths" to fetch data</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <!-- Booth Management Section -->
+    <div class="section" style="margin-top:24px;border-top:2px solid #ddd;padding-top:16px;">
+      <h2 style="font-size:18px;margin-bottom:12px;">Booth Management</h2>
 
-    <!-- Edit Modal (Hidden by default) -->
-    <div id="editModal"
-      style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:24px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:1000;min-width:400px;">
-      <h3 style="margin-top:0;">Edit Booth</h3>
-      <input type="hidden" id="editBoothId" />
-      <div class="row">
-        <label>Booth Name:</label>
-        <input id="editBoothName" type="text" style="width:100%;max-width:300px;" />
+      <!-- Create New Booth Form -->
+      <form onsubmit="event.preventDefault();createBooth();"
+        style="background:#f9f9fb;padding:12px;border-radius:6px;margin-bottom:16px;">
+        <h3 style="font-size:14px;margin:0 0 8px 0;">Create New Booth</h3>
+        <div class="row">
+          <label>Booth Name:</label>
+          <input id="newBoothName" type="text" placeholder="e.g., HKV Main Booth" required style="width:200px;" />
+          <label>Location Key:</label>
+          <input id="newBoothLocationKey" type="text" placeholder="e.g., HKV" required style="width:150px;" />
+          <label>Price (₹):</label>
+          <input id="newBoothPrice" type="number" placeholder="250.00" value="250.00" min="1" max="10000" step="0.01"
+            style="width:120px;" />
+          <button type="submit" style="background:#007aff;color:white;border:none;">Create Booth</button>
+        </div>
+      </form>
+
+      <!-- Filter Options -->
+      <div class="row" style="margin-bottom:12px;">
+        <label>Filter by Location:</label>
+        <input id="filterLocationKey" type="text" placeholder="Leave empty for all" style="width:150px;" />
+        <button onclick="loadBooths()" style="background:#34c759;color:white;border:none;">Load Booths</button>
       </div>
-      <div class="row">
-        <label>Location Key:</label>
-        <input id="editLocationKey" type="text"
-          style="width:100%;max-width:300px;background:#f5f5f7;cursor:not-allowed;" disabled readonly />
+
+      <!-- Booths Table -->
+      <div style="overflow-x:auto;">
+        <table id="boothsTable" style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#f5f5f7;text-align:left;">
+              <th style="padding:8px;border:1px solid #ddd;width:50px;">S.No</th>
+              <th style="padding:8px;border:1px solid #ddd;">Booth Name</th>
+              <th style="padding:8px;border:1px solid #ddd;">Location Key</th>
+              <th style="padding:8px;border:1px solid #ddd;">Booth Code</th>
+              <th style="padding:8px;border:1px solid #ddd;">Price (₹)</th>
+              <th style="padding:8px;border:1px solid #ddd;">API Key</th>
+              <th style="padding:8px;border:1px solid #ddd;">Status</th>
+              <th style="padding:8px;border:1px solid #ddd;">Last Seen</th>
+              <th style="padding:8px;border:1px solid #ddd;">Created</th>
+              <th style="padding:8px;border:1px solid #ddd;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="boothsTableBody">
+            <tr>
+              <td colspan="10" style="padding:16px;text-align:center;color:#999;">Click "Load Booths" to fetch data</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div class="row">
-        <label>Status:</label>
-        <select id="editStatus" style="width:100%;max-width:300px;">
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="maintenance">Maintenance</option>
-        </select>
+
+      <!-- Edit Modal (Hidden by default) -->
+      <div id="editModal"
+        style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:24px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:1000;min-width:400px;">
+        <h3 style="margin-top:0;">Edit Booth</h3>
+        <input type="hidden" id="editBoothId" />
+        <div class="row">
+          <label>Booth Name:</label>
+          <input id="editBoothName" type="text" style="width:100%;max-width:300px;" />
+        </div>
+        <div class="row">
+          <label>Location Key:</label>
+          <input id="editLocationKey" type="text"
+            style="width:100%;max-width:300px;background:#f5f5f7;cursor:not-allowed;" disabled readonly />
+        </div>
+        <div class="row">
+          <label>Price (₹):</label>
+          <input id="editBoothPrice" type="number" min="1" max="10000" step="0.01"
+            style="width:100%;max-width:300px;" />
+        </div>
+        <div class="row">
+          <label>Status:</label>
+          <select id="editStatus" style="width:100%;max-width:300px;">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="maintenance">Maintenance</option>
+          </select>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button onclick="updateBooth()" style="background:#007aff;color:white;border:none;">Save Changes</button>
+          <button onclick="closeEditModal()" style="background:#ddd;border:none;">Cancel</button>
+        </div>
       </div>
-      <div class="row" style="margin-top:16px;">
-        <button onclick="updateBooth()" style="background:#007aff;color:white;border:none;">Save Changes</button>
-        <button onclick="closeEditModal()" style="background:#ddd;border:none;">Cancel</button>
-      </div>
+      <div id="modalBackdrop"
+        style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;"
+        onclick="closeEditModal()"></div>
     </div>
-    <div id="modalBackdrop"
-      style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;"
-      onclick="closeEditModal()"></div>
-  </div>
   </div>
 
   <div class="devices" id="devices"></div>
@@ -478,7 +490,7 @@
         });
 
         const data = await res.json();
-        
+
         if (!res.ok || !data.success) {
           throw new Error(data.error || 'Invalid credentials');
         }
@@ -532,16 +544,17 @@
     function displayLocations(locations) {
       const tbody = document.getElementById('locationsTableBody');
       if (!locations || locations.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:16px;text-align:center;color:#999;">No locations found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:16px;text-align:center;color:#999;">No locations found</td></tr>';
         return;
       }
 
-      tbody.innerHTML = locations.map(location => {
+      tbody.innerHTML = locations.map((location, index) => {
         const statusColor = location.active ? '#34c759' : '#999';
         const created = new Date(location.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
         return `
           <tr>
+            <td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:600;color:#666;">${index + 1}</td>
             <td style="padding:8px;border:1px solid #ddd;"><code style="color:#007aff;font-weight:600;">${escapeHtml(location.location_key)}</code></td>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(location.location_name)}</td>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(location.city)}</td>
@@ -690,22 +703,25 @@
     function displayBooths(booths) {
       const tbody = document.getElementById('boothsTableBody');
       if (!booths || booths.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="padding:16px;text-align:center;color:#999;">No booths found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#999;">No booths found</td></tr>';
         return;
       }
 
-      tbody.innerHTML = booths.map(booth => {
+      tbody.innerHTML = booths.map((booth, index) => {
         const statusColor = booth.status === 'active' ? '#34c759' :
           booth.status === 'maintenance' ? '#ff9500' : '#999';
         const lastSeen = booth.last_seen_at ? new Date(booth.last_seen_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never';
         const created = new Date(booth.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
         const apiKeyDisplay = booth.api_key.substring(0, 20) + '...';
+        const price = booth.price_inr ? `₹${parseFloat(booth.price_inr).toFixed(2)}` : '₹250.00';
 
         return `
           <tr>
+            <td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:600;color:#666;">${index + 1}</td>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(booth.booth_name)}</td>
             <td style="padding:8px;border:1px solid #ddd;"><code>${escapeHtml(booth.location_key)}</code></td>
             <td style="padding:8px;border:1px solid #ddd;"><code style="color:#007aff;font-weight:600;">${escapeHtml(booth.booth_code || 'N/A')}</code></td>
+            <td style="padding:8px;border:1px solid #ddd;font-weight:600;color:#34c759;">${price}</td>
             <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:11px;" title="${escapeHtml(booth.api_key)}">
               <span style="display:inline-flex;align-items:center;gap:8px;">
                 <span>${apiKeyDisplay}</span>
@@ -724,9 +740,9 @@
             <td style="padding:8px;border:1px solid #ddd;font-size:11px;">${lastSeen}</td>
             <td style="padding:8px;border:1px solid #ddd;font-size:11px;">${created}</td>
             <td style="padding:8px;border:1px solid #ddd;">
-              <button onclick='editBooth(${JSON.stringify(booth)})' style="font-size:11px;padding:4px 8px;margin:2px;">Edit</button>
-              <button onclick='regenerateKey("${booth.id}", "${escapeHtml(booth.booth_name)}")' style="font-size:11px;padding:4px 8px;background:#ff9500;color:white;border:none;margin:2px;">Regenerate Key</button>
-              <button onclick='deleteBooth("${booth.id}", "${escapeHtml(booth.booth_name)}")' style="font-size:11px;padding:4px 8px;background:#ff3b30;color:white;border:none;margin:2px;">Delete</button>
+              ${booth.status !== 'inactive' ? `<button onclick='editBooth(${JSON.stringify(booth)})' style="font-size:11px;padding:4px 8px;margin:2px;">Edit</button>` : ''}
+              ${booth.status === 'active' ? `<button onclick='regenerateKey("${booth.id}", "${escapeHtml(booth.booth_name)}")' style="font-size:11px;padding:4px 8px;background:#ff9500;color:white;border:none;margin:2px;">Regenerate Key</button>` : ''}
+              <button onclick='deleteBooth("${booth.id}", "${escapeHtml(booth.booth_name)}", "${booth.status}")' style="font-size:11px;padding:4px 8px;background:${booth.status === 'inactive' ? '#ff3b30' : '#ff9500'};color:white;border:none;margin:2px;">${booth.status === 'inactive' ? 'Delete' : 'Deactivate'}</button>
             </td>
           </tr>
         `;
@@ -742,25 +758,25 @@
     async function copyToClipboard(text, button) {
       try {
         await navigator.clipboard.writeText(text);
-        
+
         // Visual feedback
         const originalText = button.innerHTML;
         button.innerHTML = '✓ Copied!';
         button.style.background = '#34c759';
         button.style.color = 'white';
         button.style.borderColor = '#34c759';
-        
+
         setTimeout(() => {
           button.innerHTML = originalText;
           button.style.background = 'transparent';
           button.style.color = '#007aff';
           button.style.borderColor = '#007aff';
         }, 2000);
-        
+
         log(`✓ API key copied to clipboard`);
       } catch (error) {
         console.error('Copy failed:', error);
-        
+
         // Fallback: show alert with the key
         alert(`Copy failed. Here's the API key:\n\n${text}`);
         log('✗ Copy failed, key shown in alert');
@@ -770,9 +786,15 @@
     async function createBooth() {
       const boothName = document.getElementById('newBoothName').value.trim();
       const locationKey = document.getElementById('newBoothLocationKey').value.trim();
+      const price = parseFloat(document.getElementById('newBoothPrice').value) || 50.00;
 
       if (!boothName || !locationKey) {
         log('Booth name and location key are required');
+        return;
+      }
+
+      if (price <= 0 || price > 10000) {
+        alert('Price must be between ₹1 and ₹10,000');
         return;
       }
 
@@ -781,7 +803,7 @@
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-          body: JSON.stringify({ booth_name: boothName, location_key: locationKey })
+          body: JSON.stringify({ booth_name: boothName, location_key: locationKey, price_inr: price })
         });
 
         const data = await res.json();
@@ -792,9 +814,10 @@
           return;
         }
 
-        log(`✓ Created booth: ${boothName}`);
+        log(`✓ Created booth: ${boothName} (₹${price.toFixed(2)})`);
         document.getElementById('newBoothName').value = '';
-        document.getElementById('newLocationKey').value = '';
+        document.getElementById('newBoothLocationKey').value = '';
+        document.getElementById('newBoothPrice').value = '250.00';
         loadBooths();
       } catch (e) {
         alert(`Error: ${e.message}`);
@@ -806,6 +829,7 @@
       document.getElementById('editBoothId').value = booth.id;
       document.getElementById('editBoothName').value = booth.booth_name;
       document.getElementById('editLocationKey').value = booth.location_key;
+      document.getElementById('editBoothPrice').value = booth.price_inr || 250.00;
       document.getElementById('editStatus').value = booth.status;
       document.getElementById('editModal').style.display = 'block';
       document.getElementById('modalBackdrop').style.display = 'block';
@@ -820,16 +844,24 @@
       const boothId = document.getElementById('editBoothId').value;
       const boothName = document.getElementById('editBoothName').value.trim();
       const status = document.getElementById('editStatus').value;
+      const price = parseFloat(document.getElementById('editBoothPrice').value);
 
-      console.log('UpdateBooth - boothId:', boothId, 'name:', boothName, 'status:', status);
+      console.log('UpdateBooth - boothId:', boothId, 'name:', boothName, 'status:', status, 'price:', price);
 
       try {
         const body = {};
         if (boothName) body.booth_name = boothName;
         if (status) body.status = status;
+        if (!isNaN(price) && price > 0) body.price_inr = price;
 
         if (Object.keys(body).length === 0) {
           log('No fields to update');
+          return;
+        }
+
+        // Validate price if provided
+        if (body.price_inr && (body.price_inr <= 0 || body.price_inr > 10000)) {
+          alert('Price must be between ₹1 and ₹10,000');
           return;
         }
 
@@ -863,8 +895,14 @@
       }
     }
 
-    async function deleteBooth(boothId, boothName) {
-      if (!confirm(`Are you sure you want to deactivate booth "${boothName}"?`)) {
+    async function deleteBooth(boothId, boothName, boothStatus) {
+      const isInactive = boothStatus === 'inactive';
+      const actionType = isInactive ? 'permanently delete' : 'deactivate';
+      const confirmMsg = isInactive
+        ? `⚠️ PERMANENT DELETE: Are you sure you want to permanently delete booth "${boothName}"? This cannot be undone.`
+        : `Are you sure you want to deactivate booth "${boothName}"?`;
+
+      if (!confirm(confirmMsg)) {
         return;
       }
 
@@ -883,7 +921,11 @@
           return;
         }
 
-        log(`✓ Booth "${boothName}" deactivated`);
+        if (data.isHardDelete) {
+          log(`✓ Booth "${boothName}" permanently deleted from system`);
+        } else {
+          log(`✓ Booth "${boothName}" deactivated`);
+        }
         loadBooths();
       } catch (e) {
         alert(`Error: ${e.message}`);
