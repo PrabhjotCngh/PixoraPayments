@@ -154,6 +154,7 @@
         <table id="locationsTable" style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr style="background:#f5f5f7;text-align:left;">
+              <th style="padding:8px;border:1px solid #ddd;width:50px;">S.No</th>
               <th style="padding:8px;border:1px solid #ddd;">Location Key</th>
               <th style="padding:8px;border:1px solid #ddd;">Location Name</th>
               <th style="padding:8px;border:1px solid #ddd;">City</th>
@@ -164,8 +165,7 @@
           </thead>
           <tbody id="locationsTableBody">
             <tr>
-              <td colspan="6" style="padding:16px;text-align:center;color:#999;">Click "Load Locations" to fetch data
-              </td>
+              <td colspan="7" style="padding:16px;text-align:center;color:#999;">Click "Load Locations" to fetch data</td>
             </tr>
           </tbody>
         </table>
@@ -208,6 +208,7 @@
         <table id="boothsTable" style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr style="background:#f5f5f7;text-align:left;">
+              <th style="padding:8px;border:1px solid #ddd;width:50px;">S.No</th>
               <th style="padding:8px;border:1px solid #ddd;">Booth Name</th>
               <th style="padding:8px;border:1px solid #ddd;">Location Key</th>
               <th style="padding:8px;border:1px solid #ddd;">Booth Code</th>
@@ -221,7 +222,7 @@
           </thead>
           <tbody id="boothsTableBody">
             <tr>
-              <td colspan="9" style="padding:16px;text-align:center;color:#999;">Click "Load Booths" to fetch data</td>
+              <td colspan="10" style="padding:16px;text-align:center;color:#999;">Click "Load Booths" to fetch data</td>
             </tr>
           </tbody>
         </table>
@@ -542,16 +543,17 @@
     function displayLocations(locations) {
       const tbody = document.getElementById('locationsTableBody');
       if (!locations || locations.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:16px;text-align:center;color:#999;">No locations found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:16px;text-align:center;color:#999;">No locations found</td></tr>';
         return;
       }
 
-      tbody.innerHTML = locations.map(location => {
+      tbody.innerHTML = locations.map((location, index) => {
         const statusColor = location.active ? '#34c759' : '#999';
         const created = new Date(location.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
         return `
           <tr>
+            <td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:600;color:#666;">${index + 1}</td>
             <td style="padding:8px;border:1px solid #ddd;"><code style="color:#007aff;font-weight:600;">${escapeHtml(location.location_key)}</code></td>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(location.location_name)}</td>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(location.city)}</td>
@@ -700,11 +702,11 @@
     function displayBooths(booths) {
       const tbody = document.getElementById('boothsTableBody');
       if (!booths || booths.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="padding:16px;text-align:center;color:#999;">No booths found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#999;">No booths found</td></tr>';
         return;
       }
 
-      tbody.innerHTML = booths.map(booth => {
+      tbody.innerHTML = booths.map((booth, index) => {
         const statusColor = booth.status === 'active' ? '#34c759' :
           booth.status === 'maintenance' ? '#ff9500' : '#999';
         const lastSeen = booth.last_seen_at ? new Date(booth.last_seen_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never';
@@ -714,6 +716,7 @@
 
         return `
           <tr>
+            <td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:600;color:#666;">${index + 1}</td>
             <td style="padding:8px;border:1px solid #ddd;">${escapeHtml(booth.booth_name)}</td>
             <td style="padding:8px;border:1px solid #ddd;"><code>${escapeHtml(booth.location_key)}</code></td>
             <td style="padding:8px;border:1px solid #ddd;"><code style="color:#007aff;font-weight:600;">${escapeHtml(booth.booth_code || 'N/A')}</code></td>
@@ -894,7 +897,7 @@
     async function deleteBooth(boothId, boothName, boothStatus) {
       const isInactive = boothStatus === 'inactive';
       const actionType = isInactive ? 'permanently delete' : 'deactivate';
-      const confirmMsg = isInactive 
+      const confirmMsg = isInactive
         ? `⚠️ PERMANENT DELETE: Are you sure you want to permanently delete booth "${boothName}"? This cannot be undone.`
         : `Are you sure you want to deactivate booth "${boothName}"?`;
 
