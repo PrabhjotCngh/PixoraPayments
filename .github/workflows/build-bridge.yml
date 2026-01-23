@@ -41,7 +41,7 @@ jobs:
           copy dist\PixoraBridge.exe bridge-release\
           copy backend\bridge\bridge-config.default.env bridge-release\bridge-config.env
           copy backend\bridge\StartBridge.bat bridge-release\
-          copy BRIDGE_INSTALLATION.md bridge-release\README.md
+          copy docs\Bridge\BRIDGE_INSTALLATION.md bridge-release\README.md
         shell: cmd
 
       - name: Create ZIP archive
