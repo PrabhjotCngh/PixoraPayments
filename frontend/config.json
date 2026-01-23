@@ -1,7 +1,4 @@
 {
-  "payment": {
-    "amountInRupees": 200
-  },
   "screens": {
     "successDuration": 3000,
     "failureDuration": 3000,
