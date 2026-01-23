@@ -5,6 +5,16 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Release version (e.g., v1.2.0, leave empty for no release)"
+        required: false
+        default: ""
+      create_release:
+        description: "Create GitHub release"
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   build-bridge:
@@ -47,9 +57,12 @@ jobs:
           path: PixoraBridge-Windows.zip
 
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: |
+          startsWith(github.ref, 'refs/tags/') || 
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ github.event.inputs.release_version || github.ref }}
           files: |
             PixoraBridge-Windows.zip
             dist/PixoraBridge.exe
