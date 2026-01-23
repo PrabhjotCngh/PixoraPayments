@@ -1,0 +1,86 @@
+name: Build and Release Bridge
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Release version (e.g., v1.2.0, leave empty for no release)"
+        required: false
+        default: ""
+      create_release:
+        description: "Create GitHub release"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  build-bridge:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build bridge executable
+        run: npm run build:bridge
+
+      - name: Copy config template
+        run: |
+          mkdir bridge-release
+          copy dist\PixoraBridge.exe bridge-release\
+          copy backend\bridge\bridge-config.default.env bridge-release\bridge-config.env
+          copy backend\bridge\StartBridge.bat bridge-release\
+          copy BRIDGE_INSTALLATION.md bridge-release\README.md
+        shell: cmd
+
+      - name: Create ZIP archive
+        run: |
+          cd bridge-release
+          7z a ..\PixoraBridge-Windows.zip *
+        shell: cmd
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: PixoraBridge-Windows
+          path: PixoraBridge-Windows.zip
+
+      - name: Create Release
+        if: |
+          startsWith(github.ref, 'refs/tags/') || 
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.release_version || github.ref }}
+          files: |
+            PixoraBridge-Windows.zip
+            dist/PixoraBridge.exe
+          body: |
+            ## Pixora Bridge Standalone Installer
+
+            ### 📦 Easy Installation (Recommended)
+            1. Download `PixoraBridge-Windows.zip`
+            2. Extract to `C:\PixoraBridge`
+            3. Edit `bridge-config.env` with your photobooth path
+            4. Double-click `StartBridge.bat`
+
+            ### 📄 Files Included:
+            - `PixoraBridge.exe` - Main executable (no Node.js required!)
+            - `bridge-config.env` - Configuration file
+            - `StartBridge.bat` - Easy launcher script
+            - `README.md` - Full installation guide
+
+            See `README.md` for detailed instructions.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

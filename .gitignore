@@ -15,6 +15,7 @@ PixoraPayments/
 # Environment variables
 .env
 .env.local
+bridge-config.env
 
 # IDE files
 .vscode/
