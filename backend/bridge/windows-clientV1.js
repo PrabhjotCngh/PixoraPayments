@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Load .env from executable directory if running as standalone, otherwise use project root
-const envPath = process.pkg 
+const envPath = process.pkg
   ? path.join(path.dirname(process.execPath), 'bridge-config.env')
   : path.join(__dirname, '../../.env');
 
@@ -186,7 +186,7 @@ function handleEvent(type) {
 app.listen(4000, () => {
   console.log('PixoraBridge listening on http://127.0.0.1:4000');
   log('Bridge listening on http://127.0.0.1:4000');
-  try { log(`Startup resolved Pixora exe: ${PIXORA_EXE} exists=${fs.existsSync(PIXORA_EXE)}`); } catch (_) {}
+  try { log(`Startup resolved Pixora exe: ${PIXORA_EXE} exists=${fs.existsSync(PIXORA_EXE)}`); } catch (_) { }
   const state = readState();
   log(`has credits before event=${state.hasCredit}`);
 });
