@@ -1,0 +1,78 @@
+name: Build PixoraPayments App
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Release version (e.g., v1.2.0, leave empty for no release)"
+        required: false
+        default: ""
+      create_release:
+        description: "Create GitHub release"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  build-payments-app:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows installer
+        run: npm run build:win
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixoraPayments-Installer
+          path: dist/*.exe
+
+      - name: Create Release
+        if: |
+          startsWith(github.ref, 'refs/tags/') || 
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.release_version || github.ref }}
+          files: dist/*.exe
+          body: |
+            ## PixoraPayments Application Installer
+
+            ### 📦 Installation
+            1. Download `PixoraPayments-*.exe`
+            2. Run the installer
+            3. Follow the on-screen instructions
+            4. Launch PixoraPayments from Start Menu or Desktop
+
+            ### ✨ Features
+            - Electron-based Cashfree payment integration
+            - QR code generation for UPI payments
+            - Automatic photobooth booth configuration
+            - Session-based credit management
+            - Real-time payment notifications
+
+            ### 🔧 Requirements
+            - Windows 10 or later
+            - Photobooth software (dslrBooth or compatible)
+            - Active Pixora Bridge service
+
+            ### 📝 Notes
+            - First launch may take a few moments to initialize
+            - Tap the screen 5 times to open booth configuration
+            - See documentation for detailed setup instructions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
