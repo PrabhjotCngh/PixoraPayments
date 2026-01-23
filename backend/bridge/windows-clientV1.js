@@ -3,7 +3,20 @@ const express = require('express');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+
+// Load .env from executable directory if running as standalone, otherwise use project root
+const envPath = process.pkg 
+  ? path.join(path.dirname(process.execPath), 'bridge-config.env')
+  : path.join(__dirname, '../../.env');
+
+if (fs.existsSync(envPath)) {
+  require('dotenv').config({ path: envPath });
+} else if (process.pkg) {
+  // If running as standalone and no config found, use defaults
+  console.log('[BRIDGE] No bridge-config.env found, using defaults');
+} else {
+  require('dotenv').config();
+}
 
 /* ===================== LOGGER ===================== */
 function ts() {
