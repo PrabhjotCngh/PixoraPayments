@@ -54,10 +54,12 @@ jobs:
           body: |
             ## PixoraPayments Application Installer
 
-            ### 📦 Installation
+            ### � Installation
             1. Download `PixoraPayments-*.exe`
-            2. Run the installer
-            3. Follow the on-screen instructions
+            2. **⚠️ Windows Warning**: You may see "This file isn't commonly downloaded" warning
+               - This is normal for new apps. Click **"Keep"** or **"More info" → "Run anyway"**
+               - Once downloaded, right-click → Properties → check **"Unblock"** → OK
+            3. Run the installer and follow on-screen instructions
             4. Launch PixoraPayments from Start Menu or Desktop
 
             ### ✨ Features
