@@ -89,6 +89,7 @@ async function authenticateBooth(req, res, next) {
             booth_name: booth.booth_name,
             booth_code: booth.booth_code,
             location_key: booth.location_key,
+            price_inr: booth.price_inr,
             status: booth.status
         };
 
