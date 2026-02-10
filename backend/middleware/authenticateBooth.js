@@ -35,7 +35,7 @@ async function authenticateBooth(req, res, next) {
 
         // Query booth by API key
         const result = await db.query(
-            `SELECT id, booth_name, booth_code, location_key, status, last_seen_at, created_at
+            `SELECT id, booth_name, booth_code, location_key, price_inr, status, last_seen_at, created_at
        FROM booths
        WHERE api_key = $1`,
             [apiKey]
