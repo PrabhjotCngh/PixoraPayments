@@ -145,7 +145,20 @@
           <input id="newLocationName" type="text" placeholder="e.g., Connaught Place" required style="width:200px;" />
           <label>City:</label>
           <input id="newLocationCity" type="text" placeholder="e.g., New Delhi" required style="width:150px;" />
+          <label>Cashfree App ID (optional):</label>
+          <input id="newLocationCashfreeAppId" type="text" placeholder="Leave blank to use .env" style="width:220px;font-family:monospace;" />
+          <label>Cashfree Secret (optional):</label>
+          <input id="newLocationCashfreeSecretKey" type="password" placeholder="Leave blank to use .env" style="width:220px;font-family:monospace;" autocomplete="off" />
+          <label>Gateway Env:</label>
+          <select id="newLocationCashfreeEnv" style="width:150px;">
+            <option value="">Use global .env</option>
+            <option value="sandbox">sandbox</option>
+            <option value="production">production</option>
+          </select>
           <button type="submit" style="background:#34c759;color:white;border:none;">Create Location</button>
+        </div>
+        <div style="font-size:12px;color:#666;margin-top:8px;">
+          Leave Cashfree fields blank to keep default .env credentials for this location.
         </div>
       </form>
 
@@ -159,18 +172,69 @@
               <th style="padding:8px;border:1px solid #ddd;">Location Name</th>
               <th style="padding:8px;border:1px solid #ddd;">City</th>
               <th style="padding:8px;border:1px solid #ddd;">Status</th>
+              <th style="padding:8px;border:1px solid #ddd;">Gateway</th>
+              <th style="padding:8px;border:1px solid #ddd;">Masked App ID</th>
+              <th style="padding:8px;border:1px solid #ddd;">Cred Updated</th>
               <th style="padding:8px;border:1px solid #ddd;">Created</th>
               <th style="padding:8px;border:1px solid #ddd;">Actions</th>
             </tr>
           </thead>
           <tbody id="locationsTableBody">
             <tr>
-              <td colspan="7" style="padding:16px;text-align:center;color:#999;">Click "Load Locations" to fetch data
+              <td colspan="10" style="padding:16px;text-align:center;color:#999;">Click "Load Locations" to fetch data
               </td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      <div id="locationEditModal"
+        style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:24px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:1001;min-width:460px;max-width:90vw;">
+        <h3 style="margin-top:0;">Edit Location</h3>
+        <input type="hidden" id="editLocationKeyHidden" />
+        <div id="editLocationCredentialSummary" style="font-size:12px;color:#666;margin-bottom:10px;"></div>
+        <div style="font-size:12px;color:#555;background:#f5f7ff;border:1px solid #dbe4ff;padding:8px 10px;border-radius:6px;margin-bottom:12px;">
+          Settlement note: Default (.env) credentials route payments to Pixora's Cashfree account. Custom override credentials route payments to that location partner's Cashfree account.
+        </div>
+
+        <div class="row">
+          <label>Location Name:</label>
+          <input id="editLocationName" type="text" style="width:100%;max-width:340px;" />
+        </div>
+        <div class="row">
+          <label>City:</label>
+          <input id="editLocationCity" type="text" style="width:100%;max-width:340px;" />
+        </div>
+        <div class="row">
+          <label>Cashfree App ID:</label>
+          <input id="editLocationCashfreeAppId" type="text" placeholder="Enter both App ID + Secret to override" style="width:100%;max-width:340px;font-family:monospace;" />
+        </div>
+        <div class="row">
+          <label>Cashfree Secret:</label>
+          <input id="editLocationCashfreeSecretKey" type="password" placeholder="Enter new secret to override" autocomplete="off" style="width:100%;max-width:340px;font-family:monospace;" />
+        </div>
+        <div class="row">
+          <label>Gateway Env:</label>
+          <select id="editLocationCashfreeEnv" style="width:100%;max-width:340px;">
+            <option value="">Use global .env</option>
+            <option value="sandbox">sandbox</option>
+            <option value="production">production</option>
+          </select>
+        </div>
+        <div class="row">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:500;">
+            <input id="editLocationClearCredentials" type="checkbox" />
+            Clear custom credentials and revert to default .env
+          </label>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button onclick="saveLocationFromModal()" style="background:#007aff;color:white;border:none;">Save Changes</button>
+          <button onclick="closeLocationEditModal()" style="margin-left:8px;">Cancel</button>
+        </div>
+      </div>
+      <div id="locationEditBackdrop"
+        style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:1000;"
+        onclick="closeLocationEditModal()"></div>
 
       <div class="row" style="margin-top:12px;">
         <button onclick="loadLocations()" style="background:#34c759;color:white;border:none;">Load Locations</button>
@@ -517,6 +581,42 @@
 
     // ============ LOCATION MANAGEMENT FUNCTIONS ============
 
+    let locationsCache = [];
+
+    function buildCredentialPayload({ appId, secretKey, env, clear }) {
+      const app = (appId || '').trim();
+      const secret = (secretKey || '').trim();
+      const selectedEnv = (env || '').trim();
+      const payload = {};
+
+      if (clear) {
+        if (app || secret || selectedEnv) {
+          throw new Error('Cannot combine clear option with credential values');
+        }
+        payload.clear_cashfree_credentials = true;
+        return payload;
+      }
+
+      if ((app && !secret) || (!app && secret)) {
+        throw new Error('Both Cashfree App ID and Secret are required together');
+      }
+
+      if (!app && !secret && selectedEnv) {
+        throw new Error('Gateway Env can be set only with custom credentials');
+      }
+
+      if (app && secret) {
+        payload.cashfree_app_id = app;
+        payload.cashfree_secret_key = secret;
+      }
+
+      if (selectedEnv) {
+        payload.cashfree_credential_env = selectedEnv;
+      }
+
+      return payload;
+    }
+
     async function loadLocations() {
       try {
         const res = await fetch('/admin/locations', {
@@ -532,24 +632,31 @@
           throw new Error(data.error || 'Failed to load locations');
         }
 
+        locationsCache = data.locations || [];
         displayLocations(data.locations);
         log(`Loaded ${data.count} location(s)`);
       } catch (e) {
         log('LoadLocations error: ' + e.message);
         document.getElementById('locationsTableBody').innerHTML =
-          '<tr><td colspan="6" style="padding:16px;text-align:center;color:#f66;">Error loading locations: ' + e.message + '</td></tr>';
+          '<tr><td colspan="10" style="padding:16px;text-align:center;color:#f66;">Error loading locations: ' + e.message + '</td></tr>';
       }
     }
 
     function displayLocations(locations) {
       const tbody = document.getElementById('locationsTableBody');
       if (!locations || locations.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="padding:16px;text-align:center;color:#999;">No locations found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#999;">No locations found</td></tr>';
         return;
       }
 
       tbody.innerHTML = locations.map((location, index) => {
         const statusColor = location.active ? '#34c759' : '#999';
+        const gatewaySource = location.credential_source === 'custom' ? 'CUSTOM' : 'DEFAULT';
+        const gatewayBg = location.credential_source === 'custom' ? '#007aff' : '#8e8e93';
+        const maskedAppId = location.masked_app_id || '-';
+        const credUpdated = location.cashfree_credentials_updated_at
+          ? new Date(location.cashfree_credentials_updated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+          : '-';
         const created = new Date(location.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
         return `
@@ -561,9 +668,14 @@
             <td style="padding:8px;border:1px solid #ddd;">
               <span style="display:inline-block;padding:2px 6px;background:${statusColor};color:white;border-radius:3px;font-size:11px;">${location.active ? 'ACTIVE' : 'INACTIVE'}</span>
             </td>
+            <td style="padding:8px;border:1px solid #ddd;">
+              <span style="display:inline-block;padding:2px 6px;background:${gatewayBg};color:white;border-radius:3px;font-size:11px;">${gatewaySource}</span>
+            </td>
+            <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:11px;">${escapeHtml(maskedAppId)}</td>
+            <td style="padding:8px;border:1px solid #ddd;font-size:11px;">${credUpdated}</td>
             <td style="padding:8px;border:1px solid #ddd;font-size:11px;">${created}</td>
             <td style="padding:8px;border:1px solid #ddd;">
-              <button onclick='editLocation(${JSON.stringify(location)})' style="font-size:11px;padding:4px 8px;margin:2px;">Edit</button>
+              <button onclick='editLocation("${location.location_key}")' style="font-size:11px;padding:4px 8px;margin:2px;">Edit</button>
               <button onclick='deleteLocation("${location.location_key}", "${escapeHtml(location.location_name)}")' style="font-size:11px;padding:4px 8px;background:#ff3b30;color:white;border:none;margin:2px;">Delete</button>
             </td>
           </tr>
@@ -575,9 +687,21 @@
       const locationKey = document.getElementById('newLocationKey').value.trim().toUpperCase();
       const locationName = document.getElementById('newLocationName').value.trim();
       const city = document.getElementById('newLocationCity').value.trim();
+      const appId = document.getElementById('newLocationCashfreeAppId').value;
+      const secretKey = document.getElementById('newLocationCashfreeSecretKey').value;
+      const env = document.getElementById('newLocationCashfreeEnv').value;
 
       if (!locationKey || !locationName || !city) {
         log('Location key, name, and city are required');
+        return;
+      }
+
+      let credentialPayload = {};
+      try {
+        credentialPayload = buildCredentialPayload({ appId, secretKey, env, clear: false });
+      } catch (validationError) {
+        alert(`Error: ${validationError.message}`);
+        log('CreateLocation validation error: ' + validationError.message);
         return;
       }
 
@@ -586,7 +710,12 @@
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-          body: JSON.stringify({ location_key: locationKey, location_name: locationName, city })
+          body: JSON.stringify({
+            location_key: locationKey,
+            location_name: locationName,
+            city,
+            ...credentialPayload
+          })
         });
 
         const data = await res.json();
@@ -601,6 +730,9 @@
         document.getElementById('newLocationKey').value = '';
         document.getElementById('newLocationName').value = '';
         document.getElementById('newLocationCity').value = '';
+        document.getElementById('newLocationCashfreeAppId').value = '';
+        document.getElementById('newLocationCashfreeSecretKey').value = '';
+        document.getElementById('newLocationCashfreeEnv').value = '';
         loadLocations();
       } catch (e) {
         alert(`Error: ${e.message}`);
@@ -608,14 +740,68 @@
       }
     }
 
-    function editLocation(location) {
-      const newName = prompt(`Edit location name for "${location.location_key}":`, location.location_name);
-      if (newName === null) return;
+    function editLocation(locationKey) {
+      const location = locationsCache.find(loc => loc.location_key === locationKey);
+      if (!location) {
+        alert('Location not found in cache. Please reload locations.');
+        return;
+      }
 
-      const newCity = prompt(`Edit city for "${location.location_key}":`, location.city);
-      if (newCity === null) return;
+      document.getElementById('editLocationKeyHidden').value = location.location_key;
+      document.getElementById('editLocationName').value = location.location_name || '';
+      document.getElementById('editLocationCity').value = location.city || '';
+      document.getElementById('editLocationCashfreeAppId').value = '';
+      document.getElementById('editLocationCashfreeSecretKey').value = '';
+      document.getElementById('editLocationCashfreeEnv').value = location.cashfree_credential_env || '';
+      document.getElementById('editLocationClearCredentials').checked = false;
 
-      updateLocation(location.location_key, { location_name: newName, city: newCity });
+      const source = location.credential_source === 'custom' ? 'Custom override' : 'Default .env fallback';
+      const appIdSummary = location.masked_app_id ? `, App ID: ${location.masked_app_id}` : '';
+      document.getElementById('editLocationCredentialSummary').textContent =
+        `Current gateway source: ${source}${appIdSummary}`;
+
+      document.getElementById('locationEditModal').style.display = 'block';
+      document.getElementById('locationEditBackdrop').style.display = 'block';
+    }
+
+    function closeLocationEditModal() {
+      document.getElementById('locationEditModal').style.display = 'none';
+      document.getElementById('locationEditBackdrop').style.display = 'none';
+    }
+
+    async function saveLocationFromModal() {
+      const locationKey = document.getElementById('editLocationKeyHidden').value;
+      const locationName = document.getElementById('editLocationName').value.trim();
+      const city = document.getElementById('editLocationCity').value.trim();
+      const appId = document.getElementById('editLocationCashfreeAppId').value;
+      const secretKey = document.getElementById('editLocationCashfreeSecretKey').value;
+      const env = document.getElementById('editLocationCashfreeEnv').value;
+      const clear = document.getElementById('editLocationClearCredentials').checked;
+
+      let credentialPayload = {};
+      try {
+        credentialPayload = buildCredentialPayload({ appId, secretKey, env, clear });
+      } catch (validationError) {
+        alert(`Error: ${validationError.message}`);
+        log('EditLocation validation error: ' + validationError.message);
+        return;
+      }
+
+      const updateData = {
+        location_name: locationName,
+        city,
+        ...credentialPayload
+      };
+
+      if (!updateData.location_name && !updateData.city && Object.keys(credentialPayload).length === 0) {
+        alert('No changes to update');
+        return;
+      }
+
+      const ok = await updateLocation(locationKey, updateData);
+      if (ok) {
+        closeLocationEditModal();
+      }
     }
 
     async function updateLocation(locationKey, updateData) {
@@ -632,14 +818,16 @@
           const errorMsg = data.error || 'Failed to update location';
           alert(`Error: ${errorMsg}`);
           log('UpdateLocation error: ' + errorMsg);
-          return;
+          return false;
         }
 
         log('✓ Location updated successfully');
         loadLocations();
+        return true;
       } catch (e) {
         alert(`Error: ${e.message}`);
         log('UpdateLocation error: ' + e.message);
+        return false;
       }
     }
 
