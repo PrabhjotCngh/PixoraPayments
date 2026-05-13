@@ -108,6 +108,10 @@ function buildCredentialUpdateFields(input) {
 
   // Explicit clear: remove custom credentials and return to .env fallback.
   if (input.clear_cashfree_credentials === true) {
+    if (appId || secret || env) {
+      throw new Error('clear_cashfree_credentials cannot be combined with credential values');
+    }
+
     return {
       cashfree_app_id: null,
       cashfree_secret_key_encrypted: null,

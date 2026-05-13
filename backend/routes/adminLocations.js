@@ -30,7 +30,15 @@ router.get('/locations', async (req, res) => {
  */
 router.post('/locations', async (req, res) => {
     try {
-        const { location_key, location_name, city } = req.body;
+        const {
+            location_key,
+            location_name,
+            city,
+            cashfree_app_id,
+            cashfree_secret_key,
+            cashfree_credential_env,
+            clear_cashfree_credentials
+        } = req.body;
 
         if (!location_key || !location_name || !city) {
             return res.status(400).json({
@@ -42,7 +50,11 @@ router.post('/locations', async (req, res) => {
         const location = await locationService.createLocation({
             location_key,
             location_name,
-            city
+            city,
+            cashfree_app_id,
+            cashfree_secret_key,
+            cashfree_credential_env,
+            clear_cashfree_credentials
         });
 
         res.status(201).json({
@@ -94,19 +106,41 @@ router.get('/locations/:key', async (req, res) => {
 router.put('/locations/:key', async (req, res) => {
     try {
         const { key } = req.params;
-        const { location_name, city, active } = req.body;
+        const {
+            location_name,
+            city,
+            active,
+            cashfree_app_id,
+            cashfree_secret_key,
+            cashfree_credential_env,
+            clear_cashfree_credentials
+        } = req.body;
 
-        if (!location_name && !city && active === undefined) {
+        const hasUpdates = (
+            Boolean(location_name) ||
+            Boolean(city) ||
+            active !== undefined ||
+            cashfree_app_id !== undefined ||
+            cashfree_secret_key !== undefined ||
+            cashfree_credential_env !== undefined ||
+            clear_cashfree_credentials === true
+        );
+
+        if (!hasUpdates) {
             return res.status(400).json({
                 success: false,
-                error: 'At least one field (location_name, city, or active) must be provided'
+                error: 'At least one updatable field must be provided'
             });
         }
 
         const location = await locationService.updateLocation(key, {
             location_name,
             city,
-            active
+            active,
+            cashfree_app_id,
+            cashfree_secret_key,
+            cashfree_credential_env,
+            clear_cashfree_credentials
         });
 
         res.json({
