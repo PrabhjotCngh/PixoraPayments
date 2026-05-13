@@ -39,6 +39,14 @@ GRANT ALL ON SCHEMA public TO pixora_admin;
 # Run the initial schema
 psql -U pixora_admin -d pixora_payments -f database/migrations/001_initial_schema.sql
 
+# Run incremental migrations in order
+psql -U pixora_admin -d pixora_payments -f database/migrations/002_add_idempotency.sql
+psql -U pixora_admin -d pixora_payments -f database/migrations/003_add_booth_code.sql
+psql -U pixora_admin -d pixora_payments -f database/migrations/004_add_order_code.sql
+psql -U pixora_admin -d pixora_payments -f database/migrations/005_add_order_tags.sql
+psql -U pixora_admin -d pixora_payments -f database/migrations/006_add_booth_price.sql
+psql -U pixora_admin -d pixora_payments -f database/migrations/007_add_location_cashfree_credentials.sql
+
 # Load sample data (optional)
 psql -U pixora_admin -d pixora_payments -f database/seeds/sample_data.sql
 ```
