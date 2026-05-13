@@ -2,14 +2,24 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../database/db');
 const axios = require('axios');
 const crypto = require('crypto');
+const { resolveLocationCredentials, getEnvFallbackCredentials } = require('./cashfreeCredentialService');
+
+function getCashfreeApiUrl(env, appId) {
+    const isProduction = env === 'production' && !String(appId || '').includes('TEST');
+    return isProduction
+        ? 'https://api.cashfree.com/pg/orders'
+        : 'https://sandbox.cashfree.com/pg/orders';
+}
 
 /**
  * Create a Cashfree order via API
  * @param {Object} params - { amount, description, locationKey }
  * @returns {Object} - Cashfree order response with order_id, payment_session_id
  */
-async function createCashfreeOrder({ amount, description, locationKey, boothCode }) {
+async function createCashfreeOrder({ amount, description, locationKey, boothCode, dbClient = db }) {
     const orderId = `ORDER_${locationKey}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
+    const credentials = await resolveLocationCredentials(locationKey, dbClient);
 
     const cashfreePayload = {
         order_id: orderId,
@@ -30,12 +40,7 @@ async function createCashfreeOrder({ amount, description, locationKey, boothCode
     };
 
     try {
-        // Determine API URL based on environment
-        const isProduction = process.env.CASHFREE_ENV === 'production' &&
-            !process.env.CASHFREE_APP_ID.includes('TEST');
-        const apiUrl = isProduction
-            ? 'https://api.cashfree.com/pg/orders'
-            : 'https://sandbox.cashfree.com/pg/orders';
+        const apiUrl = getCashfreeApiUrl(credentials.env, credentials.appId);
 
         const response = await axios.post(
             apiUrl,
@@ -43,8 +48,8 @@ async function createCashfreeOrder({ amount, description, locationKey, boothCode
             {
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-client-id': process.env.CASHFREE_APP_ID,
-                    'x-client-secret': process.env.CASHFREE_SECRET_KEY,
+                    'x-client-id': credentials.appId,
+                    'x-client-secret': credentials.secretKey,
                     'x-api-version': process.env.CASHFREE_API_VERSION || '2025-01-01'
                 },
                 timeout: 15000 // 15 second timeout
@@ -56,7 +61,9 @@ async function createCashfreeOrder({ amount, description, locationKey, boothCode
             cashfree_order_id: response.data.cf_order_id || response.data.order_id,
             payment_session_id: response.data.payment_session_id,
             order_status: response.data.order_status,
-            order_code: response.data.order_code
+            order_code: response.data.order_code,
+            cashfree_env: credentials.env,
+            credential_source: credentials.source
         };
     } catch (error) {
         console.error('Cashfree API Error:', error.response?.data || error.message);
@@ -83,10 +90,13 @@ async function createOrder({ booth_id, location_key, booth_code, amount, descrip
         const existingResult = await client.query(existingOrderQuery, [idempotency_key]);
 
         if (existingResult.rows.length > 0) {
+            const gateway = await resolveLocationCredentials(location_key, client);
             console.log(`Idempotent request detected: ${idempotency_key}, returning existing order`);
             return {
                 isExisting: true,
-                order: existingResult.rows[0]
+                order: existingResult.rows[0],
+                cashfree_env: gateway.env,
+                credential_source: gateway.source
             };
         }
 
@@ -95,7 +105,8 @@ async function createOrder({ booth_id, location_key, booth_code, amount, descrip
             amount,
             description,
             locationKey: location_key,
-            boothCode: booth_code
+            boothCode: booth_code,
+            dbClient: client
         });
 
         // Insert into database
@@ -130,7 +141,9 @@ async function createOrder({ booth_id, location_key, booth_code, amount, descrip
             isExisting: false,
             order: insertResult.rows[0],
             payment_session_id: cashfreeOrder.payment_session_id,
-            order_code: cashfreeOrder.order_code
+            order_code: cashfreeOrder.order_code,
+            cashfree_env: cashfreeOrder.cashfree_env,
+            credential_source: cashfreeOrder.credential_source
         };
     });
 }
@@ -190,19 +203,24 @@ async function listOrdersByBooth(boothId, limit = 50) {
  * @param {string} orderId - Cashfree order_id
  * @returns {Object} - Order status and payment information
  */
-async function getOrder(orderId) {
-    // Determine API URL based on environment
-    const isProduction = process.env.CASHFREE_ENV === 'production' &&
-        !process.env.CASHFREE_APP_ID.includes('TEST');
-    const apiUrl = isProduction
-        ? 'https://api.cashfree.com/pg/orders'
-        : 'https://sandbox.cashfree.com/pg/orders';
+async function getOrder(orderId, locationKey = null) {
+    const fallback = getEnvFallbackCredentials();
+    const credentials = locationKey
+        ? await resolveLocationCredentials(locationKey)
+        : {
+            source: 'default',
+            appId: fallback.appId,
+            secretKey: fallback.secretKey,
+            env: fallback.env
+        };
+
+    const apiUrl = getCashfreeApiUrl(credentials.env, credentials.appId);
 
     try {
         const response = await axios.get(`${apiUrl}/${encodeURIComponent(orderId)}`, {
             headers: {
-                'x-client-id': process.env.CASHFREE_APP_ID,
-                'x-client-secret': process.env.CASHFREE_SECRET_KEY,
+                'x-client-id': credentials.appId,
+                'x-client-secret': credentials.secretKey,
                 'x-api-version': process.env.CASHFREE_API_VERSION || '2025-01-01'
             },
             timeout: 10000
@@ -214,7 +232,9 @@ async function getOrder(orderId) {
             paid: data.order_status === 'PAID',
             status: data.order_status,
             orderAmount: data.order_amount,
-            orderId: data.order_id
+            orderId: data.order_id,
+            env: credentials.env,
+            credential_source: credentials.source
         };
     } catch (error) {
         console.error('Error fetching order from Cashfree:', error.response?.data || error.message);

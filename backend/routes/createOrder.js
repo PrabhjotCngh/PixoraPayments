@@ -75,7 +75,8 @@ router.post('/create-order', authenticateBooth, async (req, res) => {
         qrCode: {
           order_id: result.order.order_id,
           payment_session_id: null, // Cannot retrieve session for existing order
-          env: process.env.CASHFREE_ENV
+          env: result.cashfree_env || process.env.CASHFREE_ENV,
+          credential_source: result.credential_source || 'default'
         },
         order: {
           id: result.order.id,
@@ -97,7 +98,8 @@ router.post('/create-order', authenticateBooth, async (req, res) => {
       qrCode: {
         order_id: result.order.order_id,
         payment_session_id: result.payment_session_id,
-        env: process.env.CASHFREE_ENV,
+        env: result.cashfree_env || process.env.CASHFREE_ENV,
+        credential_source: result.credential_source || 'default',
         order_code: result.order_code
       },
       order: {
