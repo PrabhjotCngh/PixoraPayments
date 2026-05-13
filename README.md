@@ -4,10 +4,8 @@ Electron app that collects payment (via Cashfree), then hands control back to DS
 
 ## Quick Start
 
-- Prereqs: Install Node.js LTS and Git.
-- Install deps: `npm install`
-- Create `.env` in project root:
   - `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV` (`sandbox`|`production`), `CASHFREE_API_VERSION`
+  - `CASHFREE_CREDENTIALS_MASTER_KEY` (required when storing per-location custom Cashfree secrets)
   - Optional: `PHOTOBOOTH_APP_PATH` (Windows path to DSLRBooth exe)
 - Run: `npm start`
 
