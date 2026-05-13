@@ -189,12 +189,30 @@ const createOrderRouter = require('./routes/createOrder');
 app.use('/api', createOrderRouter);
 
 // Test endpoint to verify booth authentication
-app.get('/api/booth/info', authenticateBooth, (req, res) => {
-  res.json({
-    success: true,
-    message: 'Booth authenticated successfully',
-    booth: req.booth
-  });
+app.get('/api/booth/info', authenticateBooth, async (req, res) => {
+  try {
+    const { resolveLocationCredentials } = require('./services/cashfreeCredentialService');
+    const gateway = await resolveLocationCredentials(req.booth.location_key);
+
+    res.json({
+      success: true,
+      message: 'Booth authenticated successfully',
+      booth: req.booth,
+      payment_gateway: {
+        is_configured: Boolean(gateway.appId && gateway.secretKey),
+        credential_source: gateway.source,
+        effective_env: gateway.env,
+        masked_app_id: gateway.maskedAppId
+      }
+    });
+  } catch (error) {
+    console.error('Error resolving payment gateway status for booth info:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to resolve payment gateway status',
+      details: error.message
+    });
+  }
 });
 
 // Health check
