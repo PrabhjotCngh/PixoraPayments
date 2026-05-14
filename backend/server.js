@@ -27,6 +27,9 @@ try { app.set('etag', false); } catch (_) { }
 app.use(express.static(path.join(__dirname, '../frontend/src')));
 console.log('Serving static from:', path.join(__dirname, '../frontend/src'));
 
+// Serve shared assets referenced by pages in frontend/src as /assets/*
+app.use('/assets', express.static(path.join(__dirname, '../frontend/assets')));
+
 // Also serve bridge directory at /bridge for convenience
 try {
   const bridgeDir = path.join(__dirname, './bridge');

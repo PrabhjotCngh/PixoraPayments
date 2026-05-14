@@ -26,6 +26,7 @@ if (typeof envBool(process.env.PIXORA_SKIPTASKBAR) !== 'undefined') winCfg.skipT
 
 // Create the main application window
 function createWindow() {
+  const appIconPath = path.join(__dirname, 'assets', 'logo.webp');
   mainWindow = new BrowserWindow({
     // Production window settings (configurable in config.json)
     width: winCfg.width || 1200,
@@ -42,8 +43,13 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false
     },
-    icon: path.join(__dirname, 'assets', 'icon.ico')
+    icon: appIconPath
   });
+
+  // Ensure macOS dock icon uses the same app logo.
+  if (process.platform === 'darwin') {
+    try { app.dock.setIcon(appIconPath); } catch (_) { }
+  }
 
   // Load index/welcome screen first
   mainWindow.loadFile(path.join(__dirname, 'src', 'payment.html'));

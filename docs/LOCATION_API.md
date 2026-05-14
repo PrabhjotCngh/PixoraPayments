@@ -1,15 +1,18 @@
 # Location Management API Endpoints
 
 ## Overview
+
 The Location Management API manages photobooth locations and their optional location-level Cashfree credentials.
 
 All endpoints require Basic Authentication with admin credentials.
 
 Credential routing model:
+
 - `default`: location uses global `.env` Cashfree credentials.
 - `custom`: location uses location-level overridden credentials.
 
 Settlement model:
+
 - `default` routes payments to Pixora Cashfree account.
 - `custom` routes payments to partner/location Cashfree account.
 
@@ -18,6 +21,7 @@ Settlement model:
 ## Endpoints
 
 ### 1. GET /admin/locations
+
 List all active locations.
 
 ```bash
@@ -51,6 +55,7 @@ Response includes safe credential metadata (never raw secret):
 ---
 
 ### 2. POST /admin/locations
+
 Create a new location.
 
 ```bash
@@ -68,11 +73,13 @@ curl -X POST https://pixora.textberry.io/admin/locations \
 ```
 
 Required fields:
+
 - `location_key`
 - `location_name`
 - `city`
 
 Optional credential fields:
+
 - `cashfree_app_id`
 - `cashfree_secret_key`
 - `cashfree_credential_env` (`sandbox` or `production`)
@@ -83,6 +90,7 @@ If credential fields are omitted, location is created with default `.env` fallba
 ---
 
 ### 3. GET /admin/locations/:key
+
 Get location by `location_key`.
 
 ```bash
@@ -94,6 +102,7 @@ Response shape matches the list endpoint item.
 ---
 
 ### 4. PUT /admin/locations/:key
+
 Update location metadata and/or credential configuration.
 
 ```bash
@@ -110,6 +119,7 @@ curl -X PUT https://pixora.textberry.io/admin/locations/CP \
 ```
 
 Supported update fields:
+
 - `location_name`
 - `city`
 - `active`
@@ -132,6 +142,7 @@ curl -X PUT https://pixora.textberry.io/admin/locations/CP \
 ---
 
 ### 5. DELETE /admin/locations/:key
+
 Deactivate a location (soft delete).
 
 ```bash
@@ -168,6 +179,7 @@ Note: location cannot be deleted while active booths exist.
 ## Web UI Behavior
 
 Admin location UI supports:
+
 - optional custom credential fields on create
 - structured edit modal for metadata + credentials
 - clear override action
@@ -175,6 +187,7 @@ Admin location UI supports:
 - masked app id and credential updated timestamp
 
 Booth configuration UI displays read-only payment gateway status for the booth location:
+
 - gateway source
 - effective env
 - masked app id
@@ -210,6 +223,7 @@ CREATE TABLE locations (
 ```
 
 **Common HTTP Status Codes:**
+
 - `200 OK` - Successful GET/PUT/DELETE
 - `201 Created` - Successful POST
 - `400 Bad Request` - Validation error or business logic error
