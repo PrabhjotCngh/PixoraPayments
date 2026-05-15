@@ -7,6 +7,8 @@ yarn.lock
 dist/
 build/
 out/
+!frontend/assets/build/
+!frontend/assets/build/**
 
 # App user data / accidental commits
 PixoraPayments/
