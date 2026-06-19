@@ -31,8 +31,8 @@ function createWindow() {
     // Production window settings (configurable in config.json)
     width: winCfg.width || 1200,
     height: winCfg.height || 800,
-    fullscreen: !!winCfg.fullscreen,
-    kiosk: !!winCfg.kiosk,
+    fullscreen: false,
+    kiosk: false,
     frame: !!winCfg.frame,
     alwaysOnTop: !!winCfg.alwaysOnTop,
     resizable: !!winCfg.resizable,
@@ -53,11 +53,74 @@ function createWindow() {
 
   // Load index/welcome screen first
   mainWindow.loadFile(path.join(__dirname, 'src', 'payment.html'));
+  // Capture renderer console output and network failures for debugging
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    const log = `Renderer console [level=${level}] ${sourceId}:${line} ${message}`;
+    console.log(log);
+    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} ${log}\n`); } catch (_) { }
+  });
 
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    const log = `did-fail-load url=${validatedURL} code=${errorCode} desc=${errorDescription} isMainFrame=${isMainFrame}`;
+    console.error(log);
+    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} ${log}\n`); } catch (_) { }
+  });
+
+  mainWindow.webContents.session.webRequest.onErrorOccurred({ urls: ['*://*/*'] }, (details) => {
+    const log = `webRequest error url=${details.url} method=${details.method} error=${details.error} statusCode=${details.statusCode} fromCache=${details.fromCache}`;
+    console.warn(log);
+    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} ${log}\n`); } catch (_) { }
+  });
+
+  mainWindow.webContents.session.webRequest.onCompleted({ urls: ['*://*/*'] }, (details) => {
+    if (details.statusCode >= 400) {
+      const log = `webRequest completed url=${details.url} status=${details.statusCode} method=${details.method} fromCache=${details.fromCache}`;
+      console.warn(log);
+      try { fs.appendFileSync('debug.log', `${new Date().toISOString()} ${log}\n`); } catch (_) { }
+    }
+  });
+
+  // Fix Cashfree CDN decompression errors by forcing identity encoding and avoiding stale 304 cache validation
+  mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
+    { urls: ['*://webapp-assets.cashfree.com/*', '*://sdk.cashfree.com/*'] },
+    (details, callback) => {
+      const headers = Object.assign({}, details.requestHeaders);
+      headers['Accept-Encoding'] = 'identity';
+      headers['Cache-Control'] = 'no-cache';
+      headers['Pragma'] = 'no-cache';
+      delete headers['If-Modified-Since'];
+      delete headers['If-None-Match'];
+      delete headers['If-Range'];
+
+      const log = `Modified Cashfree request headers for ${details.url}: Accept-Encoding=${headers['Accept-Encoding']} Cache-Control=${headers['Cache-Control']}`;
+      console.log(log);
+      try { fs.appendFileSync('debug.log', `${new Date().toISOString()} ${log}\n`); } catch (_) { }
+      callback({ requestHeaders: headers });
+    }
+  );
+
+  mainWindow.webContents.session.webRequest.onHeadersReceived(
+    { urls: ['*://webapp-assets.cashfree.com/*', '*://sdk.cashfree.com/*'] },
+    (details, callback) => {
+      if (details.statusCode === 304) {
+        const responseHeaders = Object.assign({}, details.responseHeaders || {});
+        ['content-encoding', 'Content-Encoding', 'content-length', 'Content-Length', 'transfer-encoding', 'Transfer-Encoding'].forEach((header) => {
+          if (header in responseHeaders) {
+            delete responseHeaders[header];
+          }
+        });
+        const log = `Stripped broken 304 response headers for ${details.url}`;
+        console.log(log);
+        try { fs.appendFileSync('debug.log', `${new Date().toISOString()} ${log}\n`); } catch (_) { }
+        callback({ responseHeaders });
+      } else {
+        callback({ responseHeaders: details.responseHeaders });
+      }
+    }
+  );
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(false);
-  //mainWindow.webContents.openDevTools();
-
+  mainWindow.webContents.openDevTools();
 
   // Respect configured window behavior and show the window
   mainWindow.once('ready-to-show', () => {
@@ -255,7 +318,7 @@ ipcMain.handle('open-booth-config', async () => {
 });
 
 // App lifecycle
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   const useLocal = (process.env.USE_LOCAL_BACKEND || '').trim().toLowerCase();
   if (useLocal === 'true' || useLocal === '1') {
     console.log('Starting local backend (USE_LOCAL_BACKEND enabled)');
@@ -265,6 +328,16 @@ app.whenReady().then(() => {
     console.log('Skipping local backend spawn (using hosted APIs)');
     try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Skipping local backend spawn (hosted APIs)\n`); } catch (e) { }
   }
+
+  try {
+    await session.defaultSession.clearCache();
+    console.log('Cleared Electron cache before launching window');
+    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Cleared Electron cache before launching window\n`); } catch (e) { }
+  } catch (e) {
+    console.warn('Failed to clear Electron cache:', e);
+    try { fs.appendFileSync('debug.log', `${new Date().toISOString()} Failed to clear Electron cache: ${e}\n`); } catch (ee) { }
+  }
+
   createWindow();
 
   app.on('activate', function () {
