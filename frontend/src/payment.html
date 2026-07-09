@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Complete Payment</title>
   <link rel="stylesheet" href="./css/kiosk.css">
-  <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+  <script src="https://sdk.cashfree.com/js/v3/cashfree.js" onerror="console.error('[cashfree sdk] failed to load', event)"></script>
 </head>
 
 <body class="payment-screen"
@@ -82,6 +82,13 @@
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
+      window.addEventListener('error', (event) => {
+        console.error('[renderer error]', event.message, 'source=', event.filename, 'line=', event.lineno, 'col=', event.colno, 'error=', event.error);
+      });
+      window.addEventListener('unhandledrejection', (event) => {
+        console.error('[unhandled rejection]', event.reason);
+      });
+
       // Setup 5-tap gesture
       setupTapGesture();
 
