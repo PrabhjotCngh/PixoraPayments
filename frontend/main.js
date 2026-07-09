@@ -31,8 +31,8 @@ function createWindow() {
     // Production window settings (configurable in config.json)
     width: winCfg.width || 1200,
     height: winCfg.height || 800,
-    fullscreen: false,
-    kiosk: false,
+    fullscreen: !!winCfg.fullscreen,
+    kiosk: !!winCfg.kiosk,
     frame: !!winCfg.frame,
     alwaysOnTop: !!winCfg.alwaysOnTop,
     resizable: !!winCfg.resizable,
@@ -120,7 +120,7 @@ function createWindow() {
   );
   // Production: hide menu bar and do not open DevTools
   mainWindow.setMenuBarVisibility(false);
-  mainWindow.webContents.openDevTools();
+  //mainWindow.webContents.openDevTools();
 
   // Respect configured window behavior and show the window
   mainWindow.once('ready-to-show', () => {
